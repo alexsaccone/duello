@@ -13,6 +13,11 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     req.toUserId === user?.id && req.status === 'pending'
   ).length;
 
+  // Debug logging
+  console.log('duelRequests:', duelRequests);
+  console.log('pendingDuels:', pendingDuels);
+  console.log('user?.id:', user?.id);
+
   const tabs = [
     { id: 'feed', label: 'Feed', icon: '🏠' },
     { id: 'search', label: 'Search', icon: '🔍' },
@@ -25,7 +30,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold text-blue-600">DuelSocial</h1>
+            <h1 className="text-2xl font-bold text-blue-600">Duello</h1>
 
             <div className="flex space-x-1">
               {tabs.map(tab => (

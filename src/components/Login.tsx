@@ -16,7 +16,7 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
         <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">
-          DuelSocial
+          Duello
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -40,7 +40,7 @@ const Login: React.FC = () => {
             disabled={!isConnected || !username.trim()}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isConnected ? 'Join DuelSocial' : 'Connecting...'}
+            {isConnected ? 'Join Duello' : 'Connecting...'}
           </button>
         </form>
 
