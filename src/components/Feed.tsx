@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { Post } from '../types';
+import { Link } from 'react-router-dom';
 
-interface FeedProps {
-  onUserClick: (userId: string) => void;
-}
-
-const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
+const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
   const { user, posts, createPost, sendDuelRequest } = useSocket();
 
@@ -73,12 +70,12 @@ const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
                       <span className="text-sm text-gray-600">👤</span>
                     </div>
                   )}
-                  <button
-                    onClick={() => onUserClick(post.userId)}
+                  <Link
+                    to={`/profile/${post.username}`}
                     className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     @{post.username}
-                  </button>
+                  </Link>
                   <span className="text-gray-500 text-sm">
                     {formatTimestamp(post.timestamp)}
                   </span>

@@ -1,23 +1,20 @@
 import React from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { Link, useLocation } from 'react-router-dom';
 
-interface NavbarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-}
-
-const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
+const Navbar: React.FC = () => {
   const { user, logout, duelRequests } = useSocket();
+  const location = useLocation();
 
   const pendingDuels = duelRequests.filter(req =>
     req.toUserId === user?.id && req.status === 'pending'
   ).length;
 
   const tabs = [
-    { id: 'feed', label: 'Feed', icon: '🏠' },
-    { id: 'search', label: 'Search', icon: '🔍' },
-    { id: 'duels', label: 'Duels', icon: '⚔️', badge: pendingDuels },
-    { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'feed', label: 'Feed', icon: '🏠', path: '/' },
+    { id: 'search', label: 'Search', icon: '🔍', path: '/search' },
+    { id: 'duels', label: 'Duels', icon: '⚔️', badge: pendingDuels, path: '/duels' },
+    { id: 'profile', label: 'Profile', icon: '👤', path: `/profile/${user?.username}` },
   ];
 
   return (
@@ -29,11 +26,11 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
 
             <div className="flex space-x-1">
               {tabs.map(tab => (
-                <button
+                <Link
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  to={tab.path}
                   className={`relative px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === tab.id
+                    location.pathname === tab.path
                       ? 'bg-blue-100 text-blue-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
@@ -45,7 +42,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                       {tab.badge}
                     </span>
                   )}
-                </button>
+                </Link>
               ))}
             </div>
           </div>

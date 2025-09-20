@@ -1,22 +1,19 @@
 import React, { useEffect } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { useParams, Link } from 'react-router-dom';
 
-interface ProfileProps {
-  userId?: string; // If provided, shows another user's profile
-  onUserClick: (userId: string) => void;
-}
+const Profile: React.FC = () => {
+  const { username } = useParams<{ username: string }>();
+  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest } = useSocket();
 
-const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
-  const { user, selectedUserProfile, getUserProfile, sendDuelRequest } = useSocket();
-
-  const profileData = userId ? selectedUserProfile : user;
-  const isOwnProfile = !userId || userId === user?.id;
+  const profileData = username ? selectedUserProfile : user;
+  const isOwnProfile = !username || username === user?.username;
 
   useEffect(() => {
-    if (userId && userId !== user?.id) {
-      getUserProfile(userId);
+    if (username && username !== user?.username) {
+      getUserProfileByUsername(username);
     }
-  }, [userId, user?.id, getUserProfile]);
+  }, [username, user?.username, getUserProfileByUsername]);
 
   if (!profileData) {
     return (
@@ -110,12 +107,12 @@ const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
                         <span className="text-sm text-gray-600">👤</span>
                       </div>
                     )}
-                    <button
-                      onClick={() => onUserClick(post.userId)}
+                    <Link
+                      to={`/profile/${post.username}`}
                       className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       @{post.username}
-                    </button>
+                    </Link>
                     <span className="text-gray-500 text-sm">
                       {formatTimestamp(post.timestamp)}
                     </span>

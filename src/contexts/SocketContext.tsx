@@ -15,6 +15,7 @@ interface SocketContextType {
   respondToDuelRequest: (requestId: string, response: 'accepted' | 'declined') => void;
   searchUsers: (query: string) => void;
   getUserProfile: (userId: string) => void;
+  getUserProfileByUsername: (username: string) => void;
   refreshDuelRequests: () => void;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
@@ -157,6 +158,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const getUserProfileByUsername = (username: string) => {
+    if (socket) {
+      socket.emit('getUserProfileByUsername', username);
+    }
+  };
+
   const refreshDuelRequests = () => {
     if (socket) {
       socket.emit('getDuelRequests');
@@ -177,6 +184,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       respondToDuelRequest,
       searchUsers,
       getUserProfile,
+      getUserProfileByUsername,
       refreshDuelRequests,
       searchResults,
       selectedUserProfile
