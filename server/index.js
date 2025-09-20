@@ -1,238 +1,273 @@
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import cors from 'cors';
-import { v4 as uuidv4 } from 'uuid';
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import cors from "cors";
+import dotenv from "dotenv";
+import connectDB from "./db.js"; // MongoDB connection
+import User from "./models/User.js";
+import Post from "./models/Post.js";
+import DuelRequest from "./models/DuelRequest.js";
+
+dotenv.config();
+connectDB();
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
 app.use(cors());
 app.use(express.json());
 
-// In-memory data storage (for demo purposes)
-const users = new Map();
-const posts = [];
-const duelRequests = new Map();
+// Socket.IO logic
+io.on("connection", (socket) => {
+  console.log("⚡ User connected:", socket.id);
 
-// User object structure
-const createUser = (username, socketId) => ({
-  id: uuidv4(),
-  username,
-  socketId,
-  wins: 0,
-  losses: 0,
-  followers: 0,
-  posts: []
-});
+  // User registration
+  socket.on("register", async (username) => {
+    try {
+      // Check if username exists
+      let existingUser = await User.findOne({ username });
+      if (existingUser) {
+        socket.emit("error", "Username already taken");
+        return;
+      }
 
-// Post object structure
-const createPost = (userId, username, content) => ({
-  id: uuidv4(),
-  userId,
-  username,
-  content,
-  timestamp: new Date().toISOString(),
-  duelRequests: []
-});
+      // Create user in DB
+      const user = new User({ username, socketId: socket.id });
+      await user.save();
 
-// Duel request object structure
-const createDuelRequest = (fromUserId, fromUsername, toUserId, toUsername, postId) => ({
-  id: uuidv4(),
-  fromUserId,
-  fromUsername,
-  toUserId,
-  toUsername,
-  postId,
-  status: 'pending', // pending, accepted, declined
-  timestamp: new Date().toISOString()
-});
+      socket.emit("authenticated", user);
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+      // Send all posts
+      const posts = await Post.find().sort({ createdAt: -1 });
+      socket.emit("allPosts", posts);
 
-  // User authentication/registration
-  socket.on('register', (username) => {
-    if (Array.from(users.values()).some(user => user.username === username)) {
-      socket.emit('error', 'Username already taken');
-      return;
+      console.log(`✅ Registered user: ${username}`);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error during registration");
     }
-
-    const user = createUser(username, socket.id);
-    users.set(socket.id, user);
-    socket.emit('authenticated', user);
-
-    // Send existing posts to the new user
-    socket.emit('allPosts', posts);
-
-    console.log(`User registered: ${username}`);
   });
 
-  // Create a new post
-  socket.on('createPost', (content) => {
-    const user = users.get(socket.id);
-    if (!user) {
-      socket.emit('error', 'Not authenticated');
-      return;
+  // Create new post
+  socket.on("createPost", async (content) => {
+    try {
+      const user = await User.findOne({ socketId: socket.id });
+      if (!user) {
+        socket.emit("error", "Not authenticated");
+        return;
+      }
+
+      const post = new Post({
+        userId: user._id,
+        username: user.username,
+        content,
+      });
+
+      await post.save();
+
+      // Attach post ID to user
+      user.posts.push(post._id);
+      await user.save();
+
+      io.emit("newPost", post);
+
+      console.log(`📝 New post by ${user.username}: ${content}`);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while creating post");
     }
-
-    const post = createPost(user.id, user.username, content);
-    posts.unshift(post); // Add to beginning of array
-    user.posts.push(post.id);
-
-    // Broadcast the new post to all connected clients
-    io.emit('newPost', post);
-
-    console.log(`New post by ${user.username}: ${content}`);
   });
 
   // Send duel request
-  socket.on('sendDuelRequest', ({ postId, targetUserId }) => {
-    const requester = users.get(socket.id);
-    if (!requester) {
-      socket.emit('error', 'Not authenticated');
-      return;
+  socket.on("sendDuelRequest", async ({ postId, targetUserId }) => {
+    try {
+      const requester = await User.findOne({ socketId: socket.id });
+      if (!requester) {
+        socket.emit("error", "Not authenticated");
+        return;
+      }
+
+      const targetUser = await User.findById(targetUserId);
+      if (!targetUser) {
+        socket.emit("error", "Target user not found");
+        return;
+      }
+
+      // Check if already exists
+      const existingRequest = await DuelRequest.findOne({
+        fromUserId: requester._id,
+        toUserId: targetUserId,
+        postId,
+      });
+
+      if (existingRequest) {
+        socket.emit("error", "Duel request already sent");
+        return;
+      }
+
+      const duelRequest = new DuelRequest({
+        fromUserId: requester._id,
+        fromUsername: requester.username,
+        toUserId: targetUser._id,
+        toUsername: targetUser.username,
+        postId,
+      });
+
+      await duelRequest.save();
+
+      // Update post with duel request reference
+      await Post.findByIdAndUpdate(postId, {
+        $push: { duelRequests: duelRequest._id },
+      });
+
+      // Notify the target
+      if (targetUser.socketId) {
+        io.to(targetUser.socketId).emit("duelRequestReceived", duelRequest);
+      }
+
+      socket.emit("duelRequestSent", duelRequest);
+
+      console.log(
+        `⚔️ Duel request from ${requester.username} to ${targetUser.username}`
+      );
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while sending duel request");
     }
-
-    // Find target user by ID
-    const targetUser = Array.from(users.values()).find(user => user.id === targetUserId);
-    if (!targetUser) {
-      socket.emit('error', 'Target user not found');
-      return;
-    }
-
-    // Check if duel request already exists
-    const existingRequest = Array.from(duelRequests.values()).find(
-      req => req.fromUserId === requester.id && req.toUserId === targetUserId && req.postId === postId
-    );
-
-    if (existingRequest) {
-      socket.emit('error', 'Duel request already sent');
-      return;
-    }
-
-    const duelRequest = createDuelRequest(
-      requester.id,
-      requester.username,
-      targetUserId,
-      targetUser.username,
-      postId
-    );
-
-    duelRequests.set(duelRequest.id, duelRequest);
-
-    // Notify the target user
-    if (targetUser.socketId) {
-      io.to(targetUser.socketId).emit('duelRequestReceived', duelRequest);
-    }
-
-    // Confirm to sender
-    socket.emit('duelRequestSent', duelRequest);
-
-    console.log(`Duel request from ${requester.username} to ${targetUser.username}`);
   });
 
   // Respond to duel request
-  socket.on('respondToDuelRequest', ({ requestId, response }) => {
-    const user = users.get(socket.id);
-    if (!user) {
-      socket.emit('error', 'Not authenticated');
-      return;
+  socket.on("respondToDuelRequest", async ({ requestId, response }) => {
+    try {
+      const user = await User.findOne({ socketId: socket.id });
+      if (!user) {
+        socket.emit("error", "Not authenticated");
+        return;
+      }
+
+      const duelRequest = await DuelRequest.findById(requestId);
+      if (
+        !duelRequest ||
+        duelRequest.toUserId.toString() !== user._id.toString()
+      ) {
+        socket.emit("error", "Invalid duel request");
+        return;
+      }
+
+      duelRequest.status = response;
+      await duelRequest.save();
+
+      const requester = await User.findById(duelRequest.fromUserId);
+      if (requester?.socketId) {
+        io.to(requester.socketId).emit("duelRequestResponse", {
+          requestId,
+          response,
+          responderUsername: user.username,
+        });
+      }
+
+      console.log(`✅ Duel request ${response} by ${user.username}`);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while responding to duel");
     }
-
-    const duelRequest = duelRequests.get(requestId);
-    if (!duelRequest || duelRequest.toUserId !== user.id) {
-      socket.emit('error', 'Invalid duel request');
-      return;
-    }
-
-    duelRequest.status = response; // 'accepted' or 'declined'
-
-    // Find the requester
-    const requester = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
-    if (requester && requester.socketId) {
-      io.to(requester.socketId).emit('duelRequestResponse', {
-        requestId,
-        response,
-        responderUsername: user.username
-      });
-    }
-
-    console.log(`Duel request ${response} by ${user.username}`);
   });
 
-  // Get user's duel requests
-  socket.on('getDuelRequests', () => {
-    const user = users.get(socket.id);
-    if (!user) {
-      socket.emit('error', 'Not authenticated');
-      return;
+  // Get duel requests for user
+  socket.on("getDuelRequests", async () => {
+    try {
+      const user = await User.findOne({ socketId: socket.id });
+      if (!user) {
+        socket.emit("error", "Not authenticated");
+        return;
+      }
+
+      const userDuelRequests = await DuelRequest.find({
+        $or: [{ fromUserId: user._id }, { toUserId: user._id }],
+      });
+
+      socket.emit("duelRequests", userDuelRequests);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while fetching duel requests");
     }
-
-    const userDuelRequests = Array.from(duelRequests.values()).filter(
-      req => req.fromUserId === user.id || req.toUserId === user.id
-    );
-
-    socket.emit('duelRequests', userDuelRequests);
   });
 
   // Search users
-  socket.on('searchUsers', (query) => {
-    const user = users.get(socket.id);
-    if (!user) {
-      socket.emit('error', 'Not authenticated');
-      return;
+  socket.on("searchUsers", async (query) => {
+    try {
+      const user = await User.findOne({ socketId: socket.id });
+      if (!user) {
+        socket.emit("error", "Not authenticated");
+        return;
+      }
+
+      const matchingUsers = await User.find({
+        username: { $regex: query, $options: "i" },
+        _id: { $ne: user._id },
+      }).select("username wins losses followers");
+
+      socket.emit("searchResults", matchingUsers);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while searching users");
     }
-
-    const matchingUsers = Array.from(users.values())
-      .filter(u => u.username.toLowerCase().includes(query.toLowerCase()) && u.id !== user.id)
-      .map(u => ({ id: u.id, username: u.username, wins: u.wins, losses: u.losses, followers: u.followers }));
-
-    socket.emit('searchResults', matchingUsers);
   });
 
   // Get user profile
-  socket.on('getUserProfile', (userId) => {
-    const targetUser = Array.from(users.values()).find(user => user.id === userId);
-    if (!targetUser) {
-      socket.emit('error', 'User not found');
-      return;
+  socket.on("getUserProfile", async (userId) => {
+    try {
+      const targetUser = await User.findById(userId).select("-socketId");
+      if (!targetUser) {
+        socket.emit("error", "User not found");
+        return;
+      }
+
+      const userPosts = await Post.find({ userId });
+      const profile = {
+        ...targetUser.toObject(),
+        posts: userPosts,
+      };
+
+      socket.emit("userProfile", profile);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while fetching profile");
     }
-
-    const userPosts = posts.filter(post => post.userId === userId);
-    const profile = {
-      id: targetUser.id,
-      username: targetUser.username,
-      wins: targetUser.wins,
-      losses: targetUser.losses,
-      followers: targetUser.followers,
-      posts: userPosts
-    };
-
-    socket.emit('userProfile', profile);
   });
 
   // Get all posts
-  socket.on('getAllPosts', () => {
-    socket.emit('allPosts', posts);
+  socket.on("getAllPosts", async () => {
+    try {
+      const posts = await Post.find().sort({ createdAt: -1 });
+      socket.emit("allPosts", posts);
+    } catch (err) {
+      console.error(err);
+      socket.emit("error", "Server error while fetching posts");
+    }
   });
 
-  socket.on('disconnect', () => {
-    const user = users.get(socket.id);
-    if (user) {
-      console.log(`User disconnected: ${user.username}`);
-      users.delete(socket.id);
+  // Disconnect
+  socket.on("disconnect", async () => {
+    try {
+      const user = await User.findOneAndUpdate(
+        { socketId: socket.id },
+        { socketId: null }
+      );
+      if (user) console.log(`❌ User disconnected: ${user.username}`);
+    } catch (err) {
+      console.error(err);
     }
   });
 });
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
