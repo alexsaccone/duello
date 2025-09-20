@@ -14,7 +14,7 @@
     "@types/uuid": "^10.0.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.1",
+    "react-router-dom": "^6.30.1",
     "react-scripts": "5.0.1",
     "socket.io-client": "^4.8.1",
     "typescript": "^4.9.5",
@@ -25,6 +25,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:frontend": "react-scripts test --watchAll=false",
+    "test:backend": "cd server && npm test",
+    "test:all": "npm run test:backend && npm run test:frontend",
     "eject": "react-scripts eject",
     "server": "cd server && npm start",
     "dev": "concurrently \"npm run server\" \"npm start\""
