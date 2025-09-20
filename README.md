@@ -1,0 +1,1 @@
+This is Duello! Project created by Alex Saccone and Andrew Arena for Big Red Hacks 2025.
