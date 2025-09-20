@@ -471,12 +471,16 @@ io.on('connection', (socket) => {
         io.to(fromUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === fromUser.id || req.toUserId === fromUser.id
         ));
+        // Send updated user stats
+        io.to(fromUser.socketId).emit('authenticated', fromUser);
       }
       if (toUser && toUser.socketId) {
         io.to(toUser.socketId).emit('duelCompleted', historyEntry);
         io.to(toUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === toUser.id || req.toUserId === toUser.id
         ));
+        // Send updated user stats
+        io.to(toUser.socketId).emit('authenticated', toUser);
       }
 
       console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove})`);
