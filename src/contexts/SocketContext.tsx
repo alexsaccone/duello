@@ -160,6 +160,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const respondToDuelRequest = (requestId: string, response: 'accepted' | 'declined') => {
     if (socket) {
       socket.emit('respondToDuelRequest', { requestId, response });
+      refreshDuelRequests();
     }
   };
 

@@ -3,11 +3,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { Link } from 'react-router-dom';
 import DuelPopup from './DuelPopup';
 
-interface DuelsProps {
-  onUserClick: (userId: string) => void;
-}
-
-const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
+const Duels: React.FC = () => {
   const {
     user,
     duelRequests,
@@ -24,7 +20,7 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
   useEffect(() => {
     refreshDuelRequests();
     refreshDuelHistory();
-  }, [refreshDuelRequests, refreshDuelHistory]);
+  }, []);
 
   // Close popup if the active duel is no longer in the duel requests (i.e., completed)
   useEffect(() => {
@@ -288,12 +284,12 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
                           </span>
                           <p className="text-sm text-gray-900">
                             {isTie ? 'Tied with' : isWinner ? 'Won against' : 'Lost to'}{' '}
-                            <button
-                              onClick={() => onUserClick(opponentUserId)}
+                            <Link
+                              to={`/profile/${opponentUsername}`}
                               className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                             >
                               @{opponentUsername}
-                            </button>
+                            </Link>
                           </p>
                         </div>
                         {history.originalPostContent && (
