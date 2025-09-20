@@ -77,7 +77,7 @@ The application will be available at:
 ## Project Structure
 
 ```
-duel-social/
+duello/
 ├── src/
 │   ├── components/          # React components
 │   ├── contexts/           # React context providers

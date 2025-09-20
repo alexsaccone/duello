@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { Link } from 'react-router-dom';
 
-interface SearchProps {
-  onUserClick: (userId: string) => void;
-}
-
-const Search: React.FC<SearchProps> = ({ onUserClick }) => {
+const Search: React.FC = () => {
   const [query, setQuery] = useState('');
   const { searchUsers, searchResults } = useSocket();
 
@@ -59,10 +56,10 @@ const Search: React.FC<SearchProps> = ({ onUserClick }) => {
           </div>
           <div className="divide-y divide-gray-200">
             {searchResults.map((user) => (
-              <div
+              <Link
                 key={user.id}
-                className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                onClick={() => onUserClick(user.id)}
+                to={`/profile/${user.username}`}
+                className="block p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -87,7 +84,7 @@ const Search: React.FC<SearchProps> = ({ onUserClick }) => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
