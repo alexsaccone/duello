@@ -1,12 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { Link } from 'react-router-dom';
 import DuelPopup from './DuelPopup';
 
-interface DuelsProps {
-  onUserClick: (userId: string) => void;
-}
-
-const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
+const Duels: React.FC = () => {
   const {
     user,
     duelRequests,
@@ -23,7 +20,7 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
   useEffect(() => {
     refreshDuelRequests();
     refreshDuelHistory();
-  }, [refreshDuelRequests, refreshDuelHistory]);
+  }, []);
 
   // Close popup if the active duel is no longer in the duel requests (i.e., completed)
   useEffect(() => {
@@ -110,13 +107,14 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-900">
-                        <button
-                          onClick={() => onUserClick(request.fromUserId)}
+                        <Link
+                          to={`/profile/${request.fromUsername}`}
                           className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                         >
                           @{request.fromUsername}
-                        </button>
-                        {' '}wants to duel you!
+                        </Link>
+                        {' '}
+                        wants to duel you!
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {formatTimestamp(request.timestamp)}
@@ -158,23 +156,27 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
                     <div>
                       <p className="text-sm text-gray-900">
                         Duel request to{' '}
-                        <button
-                          onClick={() => onUserClick(request.toUserId)}
+                        <Link
+                          to={`/profile/${request.toUsername}`}
                           className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                         >
                           @{request.toUsername}
-                        </button>
+                        </Link>
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         {formatTimestamp(request.timestamp)}
                       </p>
                     </div>
                     <div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        request.status === 'accepted' ? 'bg-green-100 text-green-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          request.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : request.status === 'accepted'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </div>
@@ -200,14 +202,15 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
                     <div>
                       <p className="text-sm text-gray-900">
                         Duel with{' '}
-                        <button
-                          onClick={() => onUserClick(
-                            request.fromUserId === user.id ? request.toUserId : request.fromUserId
-                          )}
+                        <Link
+                          to={`/profile/${request.fromUserId === user.id ? request.toUsername : request.fromUsername}`}
                           className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                         >
-                          @{request.fromUserId === user.id ? request.toUsername : request.fromUsername}
-                        </button>
+                          @
+                          {request.fromUserId === user.id
+                            ? request.toUsername
+                            : request.fromUsername}
+                        </Link>
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
                         Accepted on {formatTimestamp(request.timestamp)}
@@ -281,12 +284,12 @@ const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
                           </span>
                           <p className="text-sm text-gray-900">
                             {isTie ? 'Tied with' : isWinner ? 'Won against' : 'Lost to'}{' '}
-                            <button
-                              onClick={() => onUserClick(opponentUserId)}
+                            <Link
+                              to={`/profile/${opponentUsername}`}
                               className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                             >
                               @{opponentUsername}
-                            </button>
+                            </Link>
                           </p>
                         </div>
                         {history.originalPostContent && (

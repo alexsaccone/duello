@@ -9,7 +9,7 @@ interface SocketContextType {
   duelRequests: DuelRequest[];
   duelHistory: DuelHistory[];
   isConnected: boolean;
-  login: (username: string) => void;
+  login: (username: string, password?: string, profilePicture?: File | null) => void;
   logout: () => void;
   createPost: (content: string) => void;
   sendDuelRequest: (postId: string, targetUserId: string) => void;
@@ -18,6 +18,7 @@ interface SocketContextType {
   submitDuelMove: (requestId: string, move: number) => void;
   searchUsers: (query: string) => void;
   getUserProfile: (userId: string) => void;
+  getUserProfileByUsername: (username: string) => void;
   refreshDuelRequests: () => void;
   refreshDuelHistory: () => void;
   forwardDuelResult: (historyId: string) => void;
@@ -116,9 +117,19 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  const login = (username: string) => {
+  const login = (username: string, password?: string, profilePicture?: File | null) => {
     if (socket) {
-      socket.emit('register', username);
+      // Convert profile picture to base64 if provided
+      if (profilePicture) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64String = e.target?.result as string;
+          socket.emit('register', { username, password, profilePicture: base64String });
+        };
+        reader.readAsDataURL(profilePicture);
+      } else {
+        socket.emit('register', { username, password });
+      }
     }
   };
 
@@ -149,6 +160,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const respondToDuelRequest = (requestId: string, response: 'accepted' | 'declined') => {
     if (socket) {
       socket.emit('respondToDuelRequest', { requestId, response });
+      refreshDuelRequests();
     }
   };
 
@@ -161,6 +173,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const getUserProfile = (userId: string) => {
     if (socket) {
       socket.emit('getUserProfile', userId);
+    }
+  };
+
+  const getUserProfileByUsername = (username: string) => {
+    if (socket) {
+      socket.emit('getUserProfileByUsername', username);
     }
   };
 
@@ -211,6 +229,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       submitDuelMove,
       searchUsers,
       getUserProfile,
+      getUserProfileByUsername,
       refreshDuelRequests,
       refreshDuelHistory,
       forwardDuelResult,

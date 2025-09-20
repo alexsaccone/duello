@@ -23,9 +23,11 @@ const duelRequests = new Map();
 const duelHistory = new Map();
 
 // User object structure
-const createUser = (username, socketId) => ({
+const createUser = (username, socketId, password, profilePicture) => ({
   id: uuidv4(),
   username,
+  password, // Store password (not hashed for demo purposes)
+  profilePicture, // Store profile picture as base64 string
   socketId,
   wins: 0,
   losses: 0,
@@ -34,10 +36,11 @@ const createUser = (username, socketId) => ({
 });
 
 // Post object structure
-const createPost = (userId, username, content) => ({
+const createPost = (userId, username, content, profilePicture) => ({
   id: uuidv4(),
   userId,
   username,
+  profilePicture, // Include profile picture in posts
   content,
   timestamp: new Date().toISOString(),
   duelRequests: []
@@ -76,15 +79,25 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // User authentication/registration
-  socket.on('register', (username) => {
+  socket.on('register', (data) => {
+    // Handle both old format (string) and new format (object)
+    const username = typeof data === 'string' ? data : data.username;
+    const password = typeof data === 'object' ? data.password : undefined;
+    const profilePicture = typeof data === 'object' ? data.profilePicture : undefined;
+
     if (Array.from(users.values()).some(user => user.username === username)) {
       socket.emit('error', 'Username already taken');
       return;
     }
 
-    const user = createUser(username, socket.id);
+    const user = createUser(username, socket.id, password, profilePicture);
     users.set(socket.id, user);
-    socket.emit('authenticated', user);
+    
+    // Don't send password back to client
+    const userResponse = { ...user };
+    delete userResponse.password;
+    
+    socket.emit('authenticated', userResponse);
 
     // Send existing posts to the new user
     socket.emit('allPosts', posts);
@@ -100,7 +113,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const post = createPost(user.id, user.username, content);
+    const post = createPost(user.id, user.username, content, user.profilePicture);
     posts.unshift(post); // Add to beginning of array
     user.posts.push(post.id);
 
@@ -210,7 +223,7 @@ io.on('connection', (socket) => {
 
     const matchingUsers = Array.from(users.values())
       .filter(u => u.username.toLowerCase().includes(query.toLowerCase()) && u.id !== user.id)
-      .map(u => ({ id: u.id, username: u.username, wins: u.wins, losses: u.losses, followers: u.followers }));
+      .map(u => ({ id: u.id, username: u.username, profilePicture: u.profilePicture, wins: u.wins, losses: u.losses, followers: u.followers }));
 
     socket.emit('searchResults', matchingUsers);
   });
@@ -227,6 +240,7 @@ io.on('connection', (socket) => {
     const profile = {
       id: targetUser.id,
       username: targetUser.username,
+      profilePicture: targetUser.profilePicture,
       wins: targetUser.wins,
       losses: targetUser.losses,
       followers: targetUser.followers,

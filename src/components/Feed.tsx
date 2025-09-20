@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { Post } from '../types';
+import { Link } from 'react-router-dom';
 
-interface FeedProps {
-  onUserClick: (userId: string) => void;
-}
-
-const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
+const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
   const { user, posts, duelRequests, createPost, sendDuelRequest } = useSocket();
 
@@ -71,12 +68,23 @@ const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <button
-                    onClick={() => onUserClick(post.userId)}
+                  {post.profilePicture ? (
+                    <img
+                      src={post.profilePicture}
+                      alt={`${post.username}'s profile`}
+                      className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
+                      <span className="text-sm text-gray-600">👤</span>
+                    </div>
+                  )}
+                  <Link
+                    to={`/profile/${post.username}`}
                     className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                   >
                     @{post.username}
-                  </button>
+                  </Link>
                   <span className="text-gray-500 text-sm">
                     {formatTimestamp(post.timestamp)}
                   </span>

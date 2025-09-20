@@ -1,22 +1,19 @@
 import React, { useEffect } from 'react';
 import { useSocket } from '../contexts/SocketContext';
+import { useParams, Link } from 'react-router-dom';
 
-interface ProfileProps {
-  userId?: string; // If provided, shows another user's profile
-  onUserClick: (userId: string) => void;
-}
+const Profile: React.FC = () => {
+  const { username } = useParams<{ username: string }>();
+  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest } = useSocket();
 
-const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
-  const { user, selectedUserProfile, getUserProfile, sendDuelRequest } = useSocket();
-
-  const profileData = userId ? selectedUserProfile : user;
-  const isOwnProfile = !userId || userId === user?.id;
+  const profileData = username ? selectedUserProfile : user;
+  const isOwnProfile = !username || username === user?.username;
 
   useEffect(() => {
-    if (userId && userId !== user?.id) {
-      getUserProfile(userId);
+    if (username && username !== user?.username) {
+      getUserProfileByUsername(username);
     }
-  }, [userId, user?.id, getUserProfile]);
+  }, [username, user?.username, getUserProfileByUsername]);
 
   if (!profileData) {
     return (
@@ -50,11 +47,24 @@ const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
       {/* Profile Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">@{profileData.username}</h1>
-            <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
-              <span>👥 {profileData.followers} followers</span>
-              <span>⚔️ Win Rate: {getWinRate()}</span>
+          <div className="flex items-center space-x-4">
+            {profileData.profilePicture ? (
+              <img
+                src={profileData.profilePicture}
+                alt={`${profileData.username}'s profile`}
+                className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-300">
+                <span className="text-2xl text-gray-600">👤</span>
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">@{profileData.username}</h1>
+              <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
+                <span>👥 {profileData.followers} followers</span>
+                <span>⚔️ Win Rate: {getWinRate()}</span>
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -86,12 +96,23 @@ const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
-                    <button
-                      onClick={() => onUserClick(post.userId)}
+                    {post.profilePicture ? (
+                      <img
+                        src={post.profilePicture}
+                        alt={`${post.username}'s profile`}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
+                        <span className="text-sm text-gray-600">👤</span>
+                      </div>
+                    )}
+                    <Link
+                      to={`/profile/${post.username}`}
                       className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       @{post.username}
-                    </button>
+                    </Link>
                     <span className="text-gray-500 text-sm">
                       {formatTimestamp(post.timestamp)}
                     </span>
