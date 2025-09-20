@@ -8,7 +8,7 @@ interface SocketContextType {
   posts: Post[];
   duelRequests: DuelRequest[];
   isConnected: boolean;
-  login: (username: string) => void;
+  login: (username: string, password?: string, profilePicture?: File | null) => void;
   logout: () => void;
   createPost: (content: string) => void;
   sendDuelRequest: (postId: string, targetUserId: string) => void;
@@ -100,9 +100,19 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  const login = (username: string) => {
+  const login = (username: string, password?: string, profilePicture?: File | null) => {
     if (socket) {
-      socket.emit('register', username);
+      // Convert profile picture to base64 if provided
+      if (profilePicture) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64String = e.target?.result as string;
+          socket.emit('register', { username, password, profilePicture: base64String });
+        };
+        reader.readAsDataURL(profilePicture);
+      } else {
+        socket.emit('register', { username, password });
+      }
     }
   };
 

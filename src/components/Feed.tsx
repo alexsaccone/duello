@@ -62,6 +62,17 @@ const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
+                  {post.profilePicture ? (
+                    <img
+                      src={post.profilePicture}
+                      alt={`${post.username}'s profile`}
+                      className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
+                      <span className="text-sm text-gray-600">👤</span>
+                    </div>
+                  )}
                   <button
                     onClick={() => onUserClick(post.userId)}
                     className="font-medium text-blue-600 hover:text-blue-800 hover:underline"

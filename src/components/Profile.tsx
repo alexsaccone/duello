@@ -50,11 +50,24 @@ const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
       {/* Profile Header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">@{profileData.username}</h1>
-            <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
-              <span>👥 {profileData.followers} followers</span>
-              <span>⚔️ Win Rate: {getWinRate()}</span>
+          <div className="flex items-center space-x-4">
+            {profileData.profilePicture ? (
+              <img
+                src={profileData.profilePicture}
+                alt={`${profileData.username}'s profile`}
+                className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center border-2 border-gray-300">
+                <span className="text-2xl text-gray-600">👤</span>
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">@{profileData.username}</h1>
+              <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
+                <span>👥 {profileData.followers} followers</span>
+                <span>⚔️ Win Rate: {getWinRate()}</span>
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -86,6 +99,17 @@ const Profile: React.FC<ProfileProps> = ({ userId, onUserClick }) => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-2">
+                    {post.profilePicture ? (
+                      <img
+                        src={post.profilePicture}
+                        alt={`${post.username}'s profile`}
+                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
+                        <span className="text-sm text-gray-600">👤</span>
+                      </div>
+                    )}
                     <button
                       onClick={() => onUserClick(post.userId)}
                       className="font-medium text-blue-600 hover:text-blue-800 hover:underline"

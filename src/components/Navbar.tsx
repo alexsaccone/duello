@@ -13,11 +13,6 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     req.toUserId === user?.id && req.status === 'pending'
   ).length;
 
-  // Debug logging
-  console.log('duelRequests:', duelRequests);
-  console.log('pendingDuels:', pendingDuels);
-  console.log('user?.id:', user?.id);
-
   const tabs = [
     { id: 'feed', label: 'Feed', icon: '🏠' },
     { id: 'search', label: 'Search', icon: '🔍' },
