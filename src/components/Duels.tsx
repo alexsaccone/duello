@@ -1,13 +1,41 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { Link } from 'react-router-dom';
+import DuelPopup from './DuelPopup';
 
-const Duels: React.FC = () => {
-  const { user, duelRequests, respondToDuelRequest, refreshDuelRequests } = useSocket();
+interface DuelsProps {
+  onUserClick: (userId: string) => void;
+}
+
+const Duels: React.FC<DuelsProps> = ({ onUserClick }) => {
+  const {
+    user,
+    duelRequests,
+    duelHistory,
+    respondToDuelRequest,
+    refreshDuelRequests,
+    refreshDuelHistory,
+    forwardDuelResult,
+    completeDuel
+  } = useSocket();
+
+  const [activeDuelPopup, setActiveDuelPopup] = useState<string | null>(null);
 
   useEffect(() => {
     refreshDuelRequests();
-  }, [refreshDuelRequests]);
+    refreshDuelHistory();
+  }, [refreshDuelRequests, refreshDuelHistory]);
+
+  // Close popup if the active duel is no longer in the duel requests (i.e., completed)
+  useEffect(() => {
+    if (activeDuelPopup) {
+      const currentDuel = duelRequests.find(req => req.id === activeDuelPopup);
+      if (!currentDuel) {
+        console.log('Duel completed, closing popup');
+        setActiveDuelPopup(null);
+      }
+    }
+  }, [activeDuelPopup, duelRequests]);
 
   if (!user) return null;
 
@@ -30,6 +58,40 @@ const Duels: React.FC = () => {
 
   const handleResponse = (requestId: string, response: 'accepted' | 'declined') => {
     respondToDuelRequest(requestId, response);
+  };
+
+  const handleCompleteDuel = (requestId: string, winnerId: string) => {
+    completeDuel(requestId, winnerId);
+  };
+
+  const handleForwardResult = (historyId: string) => {
+    forwardDuelResult(historyId);
+  };
+
+  const handleBeginDuel = (requestId: string) => {
+    setActiveDuelPopup(requestId);
+  };
+
+  const handleCloseDuelPopup = () => {
+    setActiveDuelPopup(null);
+  };
+
+  const getDuelButtonState = (request: any) => {
+    if (!user) return 'begin';
+
+    const isFromUser = request.fromUserId === user.id;
+    const userMove = isFromUser ? request.fromUserMove : request.toUserMove;
+    const opponentMove = isFromUser ? request.toUserMove : request.fromUserMove;
+
+    if (userMove !== null && userMove !== undefined) {
+      if (opponentMove !== null && opponentMove !== undefined) {
+        return 'completed'; // Both have moved
+      } else {
+        return 'waiting'; // User has moved, waiting for opponent
+      }
+    } else {
+      return 'begin'; // User hasn't moved yet
+    }
   };
 
   return (
@@ -132,7 +194,7 @@ const Duels: React.FC = () => {
         </div>
 
         {/* Accepted Duels */}
-        <div>
+        <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Active Duels ({acceptedDuels.length})
           </h2>
@@ -159,12 +221,38 @@ const Duels: React.FC = () => {
                       </p>
                     </div>
                     <div>
-                      <button
-                        className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-sm"
-                        disabled
-                      >
-                        Play Duel (Coming Soon)
-                      </button>
+                      {(() => {
+                        const buttonState = getDuelButtonState(request);
+
+                        switch (buttonState) {
+                          case 'begin':
+                            return (
+                              <button
+                                onClick={() => handleBeginDuel(request.id)}
+                                className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-sm"
+                              >
+                                Begin Duel
+                              </button>
+                            );
+                          case 'waiting':
+                            return (
+                              <button
+                                disabled
+                                className="bg-yellow-400 text-yellow-900 px-4 py-2 rounded-md text-sm cursor-not-allowed"
+                              >
+                                Awaiting Other Player
+                              </button>
+                            );
+                          case 'completed':
+                            return (
+                              <span className="text-sm text-gray-500 italic">
+                                Calculating results...
+                              </span>
+                            );
+                          default:
+                            return null;
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -175,12 +263,84 @@ const Duels: React.FC = () => {
           )}
         </div>
 
-        {duelRequests.length === 0 && (
+        {/* Duel History */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Duel History ({duelHistory.length})
+          </h2>
+          {duelHistory.length > 0 ? (
+            <div className="space-y-3">
+              {duelHistory.map((history) => {
+                const isWinner = history.winnerId === user.id;
+                const isTie = history.winnerId === 'tie';
+                const opponentUsername = history.fromUserId === user.id ? history.toUsername : history.fromUsername;
+                const opponentUserId = history.fromUserId === user.id ? history.toUserId : history.fromUserId;
+
+                return (
+                  <div key={history.id} className={`border border-gray-200 rounded-lg p-4 ${
+                    isTie ? 'bg-yellow-50' : isWinner ? 'bg-green-50' : 'bg-red-50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">
+                            {isTie ? '🤝' : isWinner ? '🏆' : '💔'}
+                          </span>
+                          <p className="text-sm text-gray-900">
+                            {isTie ? 'Tied with' : isWinner ? 'Won against' : 'Lost to'}{' '}
+                            <button
+                              onClick={() => onUserClick(opponentUserId)}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                            >
+                              @{opponentUsername}
+                            </button>
+                          </p>
+                        </div>
+                        {history.originalPostContent && (
+                          <p className="text-xs text-gray-600 mt-1 italic">
+                            "{history.originalPostContent}"
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatTimestamp(history.timestamp)}
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => handleForwardResult(history.id)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
+                        >
+                          <span>Forward</span>
+                          <span>→</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No duel history yet</p>
+          )}
+        </div>
+
+        {duelRequests.length === 0 && duelHistory.length === 0 && (
           <div className="text-center py-8">
             <p className="text-gray-500">No duel activity yet. Send a duel request on someone's post!</p>
           </div>
         )}
       </div>
+
+      {/* Duel Popup */}
+      {activeDuelPopup && (() => {
+        const currentDuel = duelRequests.find(req => req.id === activeDuelPopup);
+        return currentDuel ? (
+          <DuelPopup
+            duel={currentDuel}
+            onClose={handleCloseDuelPopup}
+          />
+        ) : null;
+      })()}
     </div>
   );
 };
