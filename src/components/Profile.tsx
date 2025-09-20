@@ -64,6 +64,7 @@ const Profile: React.FC = () => {
               <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
                 <span>👥 {profileData.followers} followers</span>
                 <span>⚔️ Win Rate: {getWinRate()}</span>
+                <span>📊 ELO: {profileData.elo}</span>
               </div>
             </div>
           </div>

@@ -1,11 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSocket } from '../contexts/SocketContext';
-import { Post } from '../types';
+import { Post, User } from '../types';
 import { Link } from 'react-router-dom';
+import { calculateEloChange } from '../utils/elo';
 
 const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
-  const { user, posts, duelRequests, createPost, sendDuelRequest } = useSocket();
+  const [userCache, setUserCache] = useState<Map<string, User>>(new Map());
+  const { user, posts, duelRequests, createPost, sendDuelRequest, socket } = useSocket();
+
+  // Load user info when encountering new user IDs
+  useEffect(() => {
+    posts.forEach(post => {
+      if (!userCache.has(post.userId) && socket) {
+        socket.emit('getUserProfile', post.userId);
+
+        socket.once(`userProfile_${post.userId}`, (profile: User) => {
+          setUserCache(cache => {
+            const newCache = new Map(cache);
+            newCache.set(post.userId, profile);
+            return newCache;
+          });
+        });
+      }
+    });
+  }, [posts, userCache, socket]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +106,7 @@ const Feed: React.FC = () => {
                   </Link>
                   <span className="text-gray-500 text-sm">
                     {formatTimestamp(post.timestamp)}
+                    {userCache.has(post.userId) && ` • ELO: ${userCache.get(post.userId)?.elo}`}
                   </span>
                 </div>
                 <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
@@ -98,6 +118,10 @@ const Feed: React.FC = () => {
                   <button
                     onClick={() => !duelSent && handleDuelRequest(post)}
                     disabled={duelSent}
+                    title={user && userCache.get(post.userId) ? 
+                      `Your ELO: ${user.elo} vs Their ELO: ${userCache.get(post.userId)?.elo}
+Win: +${Math.abs(calculateEloChange(user.elo, userCache.get(post.userId)?.elo || 1000, 1))}
+Loss: ${calculateEloChange(user.elo, userCache.get(post.userId)?.elo || 1000, 0)}` : ''}
                     className={`ml-4 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center space-x-2 ${
                       duelSent
                         ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
