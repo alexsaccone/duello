@@ -25,6 +25,22 @@ export interface DuelRequest {
   postId: string;
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
+  fromUserMove?: number | null;
+  toUserMove?: number | null;
+  gameState?: 'waiting_for_moves' | 'completed';
+}
+
+export interface DuelHistory {
+  id: string;
+  fromUserId: string;
+  fromUsername: string;
+  toUserId: string;
+  toUsername: string;
+  postId: string;
+  winnerId: string;
+  winnerUsername: string;
+  timestamp: string;
+  originalPostContent?: string;
 }
 
 export interface UserProfile {

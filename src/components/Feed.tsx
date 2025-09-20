@@ -8,7 +8,7 @@ interface FeedProps {
 
 const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
   const [newPost, setNewPost] = useState('');
-  const { user, posts, createPost, sendDuelRequest } = useSocket();
+  const { user, posts, duelRequests, createPost, sendDuelRequest } = useSocket();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +22,15 @@ const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
     if (user && post.userId !== user.id) {
       sendDuelRequest(post.id, post.userId);
     }
+  };
+
+  const hasSentDuelRequest = (postId: string, targetUserId: string) => {
+    if (!user) return false;
+    return duelRequests.some(
+      req => req.fromUserId === user.id &&
+             req.toUserId === targetUserId &&
+             req.postId === postId
+    );
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -75,15 +84,23 @@ const Feed: React.FC<FeedProps> = ({ onUserClick }) => {
                 <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
               </div>
 
-              {user && post.userId !== user.id && (
-                <button
-                  onClick={() => handleDuelRequest(post)}
-                  className="ml-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center space-x-2"
-                >
-                  <span>⚔️</span>
-                  <span>Duel</span>
-                </button>
-              )}
+              {user && post.userId !== user.id && (() => {
+                const duelSent = hasSentDuelRequest(post.id, post.userId);
+                return (
+                  <button
+                    onClick={() => !duelSent && handleDuelRequest(post)}
+                    disabled={duelSent}
+                    className={`ml-4 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 flex items-center space-x-2 ${
+                      duelSent
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                        : 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+                    }`}
+                  >
+                    <span>⚔️</span>
+                    <span>{duelSent ? 'Duel Sent' : 'Duel'}</span>
+                  </button>
+                );
+              })()}
             </div>
           </div>
         ))}

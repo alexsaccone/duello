@@ -1,21 +1,26 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { User, Post, DuelRequest, UserProfile } from '../types';
+import { User, Post, DuelRequest, UserProfile, DuelHistory } from '../types';
 
 interface SocketContextType {
   socket: Socket | null;
   user: User | null;
   posts: Post[];
   duelRequests: DuelRequest[];
+  duelHistory: DuelHistory[];
   isConnected: boolean;
   login: (username: string) => void;
   logout: () => void;
   createPost: (content: string) => void;
   sendDuelRequest: (postId: string, targetUserId: string) => void;
   respondToDuelRequest: (requestId: string, response: 'accepted' | 'declined') => void;
+  completeDuel: (requestId: string, winnerId: string) => void;
+  submitDuelMove: (requestId: string, move: number) => void;
   searchUsers: (query: string) => void;
   getUserProfile: (userId: string) => void;
   refreshDuelRequests: () => void;
+  refreshDuelHistory: () => void;
+  forwardDuelResult: (historyId: string) => void;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
 }
@@ -35,6 +40,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [duelRequests, setDuelRequests] = useState<DuelRequest[]>([]);
+  const [duelHistory, setDuelHistory] = useState<DuelHistory[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedUserProfile, setSelectedUserProfile] = useState<UserProfile | null>(null);
@@ -91,6 +97,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setSelectedUserProfile(profile);
     });
 
+    newSocket.on('duelHistory', (history: DuelHistory[]) => {
+      setDuelHistory(history);
+    });
+
+    newSocket.on('duelCompleted', (historyEntry: DuelHistory) => {
+      setDuelHistory(prev => [historyEntry, ...prev]);
+      // Refresh duel requests to remove completed duel
+      newSocket.emit('getDuelRequests');
+    });
+
     newSocket.on('error', (message: string) => {
       alert(`Error: ${message}`);
     });
@@ -110,6 +126,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setUser(null);
     setPosts([]);
     setDuelRequests([]);
+    setDuelHistory([]);
     setSearchResults([]);
     setSelectedUserProfile(null);
     if (socket) {
@@ -153,21 +170,50 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const completeDuel = (requestId: string, winnerId: string) => {
+    if (socket) {
+      socket.emit('completeDuel', { requestId, winnerId });
+    }
+  };
+
+  const refreshDuelHistory = () => {
+    if (socket) {
+      socket.emit('getDuelHistory');
+    }
+  };
+
+  const forwardDuelResult = (historyId: string) => {
+    if (socket) {
+      socket.emit('forwardDuelResult', { historyId });
+    }
+  };
+
+  const submitDuelMove = (requestId: string, move: number) => {
+    if (socket) {
+      socket.emit('submitDuelMove', { requestId, move });
+    }
+  };
+
   return (
     <SocketContext.Provider value={{
       socket,
       user,
       posts,
       duelRequests,
+      duelHistory,
       isConnected,
       login,
       logout,
       createPost,
       sendDuelRequest,
       respondToDuelRequest,
+      completeDuel,
+      submitDuelMove,
       searchUsers,
       getUserProfile,
       refreshDuelRequests,
+      refreshDuelHistory,
+      forwardDuelResult,
       searchResults,
       selectedUserProfile
     }}>
