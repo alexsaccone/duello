@@ -1,25 +1,57 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import { SocketProvider, useSocket } from './contexts/SocketContext';
+import Login from './components/Login';
+import Navbar from './components/Navbar';
+import Feed from './components/Feed';
+import Search from './components/Search';
+import Profile from './components/Profile';
+import Duels from './components/Duels';
+
+const AppContent: React.FC = () => {
+  const { user } = useSocket();
+  const [activeTab, setActiveTab] = useState('feed');
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
+  const handleUserClick = (userId: string) => {
+    setViewingUserId(userId);
+    setActiveTab('profile');
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== 'profile') {
+      setViewingUserId(null);
+    }
+  };
+
+  if (!user) {
+    return <Login />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <Navbar activeTab={activeTab} setActiveTab={handleTabChange} />
+
+      <main className="py-8 px-4">
+        {activeTab === 'feed' && <Feed onUserClick={handleUserClick} />}
+        {activeTab === 'search' && <Search onUserClick={handleUserClick} />}
+        {activeTab === 'duels' && <Duels onUserClick={handleUserClick} />}
+        {activeTab === 'profile' && (
+          <Profile
+            userId={viewingUserId || undefined}
+            onUserClick={handleUserClick}
+          />
+        )}
+      </main>
+    </div>
+  );
+};
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <SocketProvider>
+      <AppContent />
+    </SocketProvider>
   );
 }
 

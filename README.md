@@ -1,46 +1,101 @@
-# Getting Started with Create React App
+# DuelSocial
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A Twitter-style social media app with dueling functionality built for Big Red Hacks 2025.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Post Creation**: Users can create and share text posts (up to 280 characters)
+- **Real-time Feed**: See all posts from connected users in real-time
+- **Duel System**: Challenge other users to duels on their posts
+- **User Profiles**: View user profiles with win/loss ratios and follower counts
+- **User Search**: Search for other users by username
+- **Duel Management**: Accept/decline duel requests and view active duels
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Frontend**: React.js with TypeScript, Tailwind CSS
+- **Backend**: Node.js, Express.js, Socket.io
+- **Real-time Communication**: WebSockets via Socket.io
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v14 or higher)
+- npm
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repository and navigate to the project directory
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies for both client and server:
+   ```bash
+   npm install
+   cd server && npm install && cd ..
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Running the Application
 
-### `npm run eject`
+You can run both the client and server together:
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+```bash
+npm run dev
+```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Or run them separately:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+**Terminal 1 (Server):**
+```bash
+npm run server
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+**Terminal 2 (Client):**
+```bash
+npm start
+```
 
-## Learn More
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5001
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## How to Use
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. **Login**: Enter a unique username to join the platform
+2. **Create Posts**: Share your thoughts in the main feed
+3. **Send Duel Requests**: Click the "Duel" button on any post to challenge the author
+4. **Manage Duels**: Use the Duels tab to accept/decline requests and view active duels
+5. **Search Users**: Find other users and view their profiles
+6. **View Profiles**: Click on usernames to see user profiles with stats and posts
+
+## Features Not Yet Implemented
+
+- **Actual Dueling Mechanics**: Currently only handles duel requests and notifications
+- **User Registration/Persistence**: Users are stored in memory only
+- **Following System**: Follower counts are placeholder values
+- **Real-time Notifications**: Basic notifications via Socket.io
+
+## Project Structure
+
+```
+duel-social/
+├── src/
+│   ├── components/          # React components
+│   ├── contexts/           # React context providers
+│   ├── types.ts           # TypeScript type definitions
+│   └── ...
+├── server/
+│   ├── index.js           # Express server with Socket.io
+│   └── package.json       # Server dependencies
+└── ...
+```
+
+## Demo Notes
+
+This is a hackathon demo focused on core functionality. The app uses in-memory storage, so data will be lost when the server restarts. For a production version, you would want to add:
+
+- Database persistence (MongoDB, PostgreSQL, etc.)
+- User authentication with passwords
+- Actual game mechanics for duels
+- Real-time notifications
+- File uploads for avatars
+- Mobile responsiveness improvements
