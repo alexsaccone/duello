@@ -22,6 +22,8 @@ interface SocketContextType {
   refreshDuelRequests: () => void;
   refreshDuelHistory: () => void;
   forwardDuelResult: (historyId: string) => void;
+  destroyPost: (historyId: string) => void;
+  postOnBehalf: (historyId: string, content: string) => void;
   calculateEloChange: (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => number;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
@@ -107,6 +109,10 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setDuelHistory(prev => [historyEntry, ...prev]);
       // Refresh duel requests to remove completed duel
       newSocket.emit('getDuelRequests');
+    });
+
+    newSocket.on('postDeleted', ({ postId }: { postId: string }) => {
+      setPosts(prev => prev.filter(post => post.id !== postId));
     });
 
     newSocket.on('error', (message: string) => {
@@ -220,6 +226,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return Math.round(K_FACTOR * (outcome - expectedScore));
   };
 
+  const destroyPost = (historyId: string) => {
+    if (socket) {
+      socket.emit('destroyPost', { historyId });
+    }
+  };
+
+  const postOnBehalf = (historyId: string, content: string) => {
+    if (socket) {
+      socket.emit('postOnBehalf', { historyId, content });
+    }
+  };
+
   return (
     <SocketContext.Provider value={{
       socket,
@@ -241,6 +259,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       refreshDuelRequests,
       refreshDuelHistory,
       forwardDuelResult,
+      destroyPost,
+      postOnBehalf,
       calculateEloChange,
       searchResults,
       selectedUserProfile

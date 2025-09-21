@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { Link } from 'react-router-dom';
 import DuelPopup from './DuelPopup';
+import PostOnBehalfPopup from './PostOnBehalfPopup';
 import DuelOutcomeVisualization from './DuelOutcomeVisualization';
 
 const Duels: React.FC = () => {
@@ -13,11 +14,12 @@ const Duels: React.FC = () => {
     refreshDuelRequests,
     refreshDuelHistory,
     forwardDuelResult,
+    destroyPost,
+    postOnBehalf,
     completeDuel
   } = useSocket();
 
   const [activeDuelPopup, setActiveDuelPopup] = useState<string | null>(null);
-  const [expandedVisualizations, setExpandedVisualizations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     refreshDuelRequests();
@@ -64,6 +66,24 @@ const Duels: React.FC = () => {
 
   const handleForwardResult = (historyId: string) => {
     forwardDuelResult(historyId);
+  };
+
+  const handleDestroyPost = (historyId: string) => {
+    destroyPost(historyId);
+  };
+
+  const handleOpenPostOnBehalf = (historyId: string, targetUsername: string) => {
+    setPostOnBehalfPopup({ historyId, targetUsername });
+  };
+
+  const handlePostOnBehalf = (content: string) => {
+    if (postOnBehalfPopup) {
+      postOnBehalf(postOnBehalfPopup.historyId, content);
+    }
+  };
+
+  const handleClosePostOnBehalf = () => {
+    setPostOnBehalfPopup(null);
   };
 
   const handleBeginDuel = (requestId: string) => {
@@ -315,7 +335,7 @@ const Duels: React.FC = () => {
                           {formatTimestamp(history.timestamp)}
                         </p>
                       </div>
-                      <div className="flex space-x-2">
+                      <div>
                         <button
                           onClick={() => handleForwardResult(history.id)}
                           className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
@@ -323,14 +343,6 @@ const Duels: React.FC = () => {
                           <span>Forward</span>
                           <span>→</span>
                         </button>
-                        {history.fromUserMove && history.toUserMove && history.pointSource && (
-                          <button
-                            onClick={() => handleToggleVisualization(history.id)}
-                            className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 text-sm"
-                          >
-                            {expandedVisualizations.has(history.id) ? 'Hide guesses' : 'Show guesses'}
-                          </button>
-                        )}
                       </div>
                     </div>
 
@@ -377,6 +389,15 @@ const Duels: React.FC = () => {
           />
         ) : null;
       })()}
+
+      {/* Post On Behalf Popup */}
+      {postOnBehalfPopup && (
+        <PostOnBehalfPopup
+          targetUsername={postOnBehalfPopup.targetUsername}
+          onPost={handlePostOnBehalf}
+          onClose={handleClosePostOnBehalf}
+        />
+      )}
     </div>
   );
 };

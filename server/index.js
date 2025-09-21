@@ -209,6 +209,14 @@ const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postI
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Helper to build authenticated payload with full post objects
+  const makeUserResponse = (u) => {
+    const fullPosts = posts.filter(p => p.userId === u.id);
+    const userResponse = { ...u, posts: fullPosts, elo: u.elo };
+    delete userResponse.password;
+    return userResponse;
+  };
+
   // User authentication/registration
   socket.on('register', (data) => {
     // Handle both old format (string) and new format (object)
@@ -224,11 +232,8 @@ io.on('connection', (socket) => {
     const user = createUser(username, socket.id, password, profilePicture);
     users.set(socket.id, user);
     
-    // Don't send password back to client
-    const userResponse = { ...user, elo: user.elo };
-    delete userResponse.password;
-    
-    socket.emit('authenticated', userResponse);
+  // Send authenticated payload with full post objects
+  socket.emit('authenticated', makeUserResponse(user));
 
     // Send existing posts to the new user
     socket.emit('allPosts', posts);
@@ -252,6 +257,8 @@ io.on('connection', (socket) => {
     io.emit('newPost', post);
 
     console.log(`New post by ${user.username}: ${content}`);
+  // Send updated authenticated payload (including full posts) to the creator
+  socket.emit('authenticated', makeUserResponse(user));
   });
 
   // Send duel request
@@ -539,7 +546,128 @@ io.on('connection', (socket) => {
     // Broadcast the new post to all connected clients
     io.emit('newPost', post);
 
+    // Send updated authenticated payload to the creator
+    socket.emit('authenticated', makeUserResponse(user));
+
     console.log(`Duel result forwarded by ${user.username}`);
+  });
+
+  // Destroy post (challenger wins scenario)
+  socket.on('destroyPost', ({ historyId }) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+
+    const historyEntry = duelHistory.get(historyId);
+    if (!historyEntry) {
+      socket.emit('error', 'Duel history not found');
+      return;
+    }
+
+    // Only challenger can destroy if they won
+    if (historyEntry.fromUserId !== user.id || historyEntry.winnerId !== user.id) {
+      socket.emit('error', 'Only the winning challenger can destroy the post');
+      return;
+    }
+
+    if (historyEntry.postDestroyed) {
+      socket.emit('error', 'Post already destroyed');
+      return;
+    }
+
+    // Find and mark post as deleted
+    const postIndex = posts.findIndex(p => p.id === historyEntry.postId);
+    if (postIndex !== -1) {
+      posts.splice(postIndex, 1); // Remove from posts array
+    }
+
+    // Mark in history
+    historyEntry.postDestroyed = true;
+
+    // Broadcast post deletion to all users
+    io.emit('postDeleted', { postId: historyEntry.postId });
+
+    // Send updated duel history to both participants
+    const fromUser = Array.from(users.values()).find(u => u.id === historyEntry.fromUserId);
+    const toUser = Array.from(users.values()).find(u => u.id === historyEntry.toUserId);
+
+    if (fromUser && fromUser.socketId) {
+      io.to(fromUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
+        h => h.fromUserId === fromUser.id || h.toUserId === fromUser.id
+      ));
+    }
+    if (toUser && toUser.socketId) {
+      io.to(toUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
+        h => h.fromUserId === toUser.id || h.toUserId === toUser.id
+      ));
+    }
+
+    console.log(`Post ${historyEntry.postId} destroyed by ${user.username}`);
+  });
+
+  // Post on behalf of loser (challenger loses scenario)
+  socket.on('postOnBehalf', ({ historyId, content }) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+
+    const historyEntry = duelHistory.get(historyId);
+    if (!historyEntry) {
+      socket.emit('error', 'Duel history not found');
+      return;
+    }
+
+    // Only winner can post on behalf if challenger lost
+    if (historyEntry.winnerId !== user.id || historyEntry.fromUserId === user.id) {
+      socket.emit('error', 'Only the winner can post on behalf when challenger loses');
+      return;
+    }
+
+    if (historyEntry.hijackPostUsed) {
+      socket.emit('error', 'Hijack post privilege already used');
+      return;
+    }
+
+    // Determine who to post as (the loser)
+    const loserId = historyEntry.fromUserId === historyEntry.winnerId ? historyEntry.toUserId : historyEntry.fromUserId;
+    const loserUser = Array.from(users.values()).find(u => u.id === loserId);
+
+    if (!loserUser) {
+      socket.emit('error', 'Target user not found');
+      return;
+    }
+
+    // Create post as the loser
+    const hijackPost = createPost(loserUser, content);
+    posts.unshift(hijackPost);
+    loserUser.posts.push(hijackPost.id);
+
+    // Mark privilege as used
+    historyEntry.hijackPostUsed = true;
+
+    // Broadcast the hijack post to all users
+    io.emit('newPost', hijackPost);
+
+    // Send updated duel history to both participants
+    const fromUser = Array.from(users.values()).find(u => u.id === historyEntry.fromUserId);
+    const toUser = Array.from(users.values()).find(u => u.id === historyEntry.toUserId);
+
+    if (fromUser && fromUser.socketId) {
+      io.to(fromUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
+        h => h.fromUserId === fromUser.id || h.toUserId === fromUser.id
+      ));
+    }
+    if (toUser && toUser.socketId) {
+      io.to(toUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
+        h => h.fromUserId === toUser.id || h.toUserId === toUser.id
+      ));
+    }
+
+    console.log(`${user.username} posted on behalf of ${loserUser.username}: ${content}`);
   });
 
   // Submit canvas move for duel
@@ -689,20 +817,16 @@ io.on('connection', (socket) => {
         io.to(fromUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === fromUser.id || req.toUserId === fromUser.id
         ));
-        // Send updated user stats including ELO
-        const fromUserResponse = { ...fromUser };
-        delete fromUserResponse.password;
-        io.to(fromUser.socketId).emit('authenticated', fromUserResponse);
+  // Send updated user stats including full posts and ELO
+  io.to(fromUser.socketId).emit('authenticated', makeUserResponse(fromUser));
       }
       if (toUser && toUser.socketId) {
         io.to(toUser.socketId).emit('duelCompleted', historyEntry);
         io.to(toUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === toUser.id || req.toUserId === toUser.id
         ));
-        // Send updated user stats including ELO
-        const toUserResponse = { ...toUser };
-        delete toUserResponse.password;
-        io.to(toUser.socketId).emit('authenticated', toUserResponse);
+  // Send updated user stats including full posts and ELO
+  io.to(toUser.socketId).emit('authenticated', makeUserResponse(toUser));
       }
       console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove}). ELO changes: ${fromUser.username} (${fromUserEloChange}), ${toUser.username} (${toUserEloChange})`);
     } else {
