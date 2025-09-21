@@ -88,7 +88,7 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
             </div>
           </div>
           <p className="text-xs text-gray-500 mb-2">
-            Strategic canvas-based duel! Place your king close to the target and guess where your opponent will place theirs.
+            Fight! Place your king and guess where your opponent will place theirs. The closer your king is to the target, the higher your score - but no points if you get captured!
           </p>
           {opponentHasSubmitted && (
             <p className="text-xs text-green-600">
