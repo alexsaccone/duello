@@ -91,7 +91,7 @@ duello/
 
 ## Demo Notes
 
-This is a hackathon demo focused on core functionality. The app uses in-memory storage, so data will be lost when the server restarts. For a production version, you would want to add:
+This is a hackathon demo focused on core functionality. The app uses in-memory storage, so data will be lost when the server restarts. For a production version, we would want to add:
 
 - Mobile responsiveness improvements
 - Enhanced security measures
