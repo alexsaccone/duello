@@ -139,13 +139,13 @@ const Duels: React.FC = () => {
           {incomingRequests.length > 0 ? (
             <div className="space-y-3">
               {incomingRequests.map((request) => (
-                <div key={request.id} className="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                <div key={request.id} className="border border-gray-200 rounded-lg p-4 bg-red-50">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-900">
                         <Link
                           to={`/profile/${request.fromUsername}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          className="font-medium text-red-600 hover:text-red-800 hover:underline"
                         >
                           @{request.fromUsername}
                         </Link>
@@ -194,7 +194,7 @@ const Duels: React.FC = () => {
                         Duel request to{' '}
                         <Link
                           to={`/profile/${request.toUsername}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          className="font-medium text-red-600 hover:text-red-800 hover:underline"
                         >
                           @{request.toUsername}
                         </Link>
@@ -240,7 +240,7 @@ const Duels: React.FC = () => {
                         Duel with{' '}
                         <Link
                           to={`/profile/${request.fromUserId === user.id ? request.toUsername : request.fromUsername}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          className="font-medium text-red-600 hover:text-red-800 hover:underline"
                         >
                           @
                           {request.fromUserId === user.id
@@ -322,7 +322,7 @@ const Duels: React.FC = () => {
                             {isTie ? 'Tied with' : isWinner ? 'Won against' : 'Lost to'}{' '}
                             <Link
                               to={`/profile/${opponentUsername}`}
-                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                              className="font-medium text-red-600 hover:text-red-800 hover:underline"
                             >
                               @{opponentUsername}
                             </Link>
@@ -348,7 +348,7 @@ const Duels: React.FC = () => {
                               <>
                                 <button
                                   onClick={() => handleForwardResult(history.id)}
-                                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
+                                  className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm flex items-center space-x-1"
                                 >
                                   <span>Forward</span>
                                   <span>→</span>

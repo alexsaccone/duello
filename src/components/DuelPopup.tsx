@@ -59,7 +59,7 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
 
         <div className="mb-6">
           <p className="text-sm text-gray-600 mb-2">
-            Dueling against <span className="font-medium text-blue-600">@{opponentUsername}</span>
+            Dueling against <span className="font-medium text-red-600">@{opponentUsername}</span>
           </p>
           <div className="bg-gray-50 p-3 rounded-lg mb-3">
             <div className="flex justify-between text-xs text-gray-600 mb-1">

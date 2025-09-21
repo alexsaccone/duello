@@ -97,7 +97,7 @@ const Profile: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => followUser(profileData.id)}
-                        className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"
+                        className="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 text-sm"
                       >
                         Follow
                       </button>
@@ -150,7 +150,7 @@ const Profile: React.FC = () => {
                       )}
                       <Link
                         to={`/profile/${post.username}`}
-                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                        className="font-medium text-red-600 hover:text-red-800 hover:underline"
                       >
                         @{post.username}
                       </Link>

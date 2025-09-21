@@ -63,13 +63,13 @@ const Feed: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Create Post */}
-      <div className="bg-white rounded-lg shadow p-6">
+  <div className="bg-white rounded-lg shadow p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <textarea
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
             placeholder="What's happening?"
-            className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-red-500 focus:border-red-500"
             rows={3}
             maxLength={280}
           />
@@ -78,7 +78,7 @@ const Feed: React.FC = () => {
             <button
               type="submit"
               disabled={!newPost.trim()}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Post
             </button>
@@ -106,7 +106,7 @@ const Feed: React.FC = () => {
                   )}
                   <Link
                     to={`/profile/${post.username}`}
-                    className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    className="font-medium text-red-600 hover:text-red-800 hover:underline"
                   >
                     @{post.username}
                   </Link>

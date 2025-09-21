@@ -39,7 +39,7 @@ const Search: React.FC = () => {
               value={query}
               onChange={handleInputChange}
               placeholder="Search for users..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
             />
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <span className="text-gray-400">🔍</span>
@@ -63,7 +63,7 @@ const Search: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-lg font-medium text-blue-600 hover:text-blue-800">
+                    <h4 className="text-lg font-medium text-red-600 hover:text-red-800">
                       @{user.username}
                     </h4>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">

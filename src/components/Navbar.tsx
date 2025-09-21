@@ -18,11 +18,11 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-white shadow-md border-b">
+  <nav className="bg-white shadow-md border-b border-gray-200">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-bold text-blue-600">Duello</h1>
+            <h1 className="text-2xl font-bold text-red-600">Duello</h1>
 
             <div className="flex space-x-1">
               {tabs.map(tab => (
@@ -31,8 +31,8 @@ const Navbar: React.FC = () => {
                   to={tab.path}
                   className={`relative px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     location.pathname === tab.path
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-red-100 text-red-700'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
                   <span className="mr-2">{tab.icon}</span>
@@ -48,12 +48,12 @@ const Navbar: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-700">
               Welcome, <span className="font-medium">{user?.username}</span>
             </span>
             <button
               onClick={logout}
-              className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100"
+              className="text-sm text-gray-700 hover:text-gray-900 px-3 py-1 rounded-md hover:bg-gray-100"
             >
               Logout
             </button>

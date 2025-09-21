@@ -247,7 +247,7 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
           disabled={!canSubmit || !kingPosition || !guessedArea}
           className={`px-6 py-2 rounded-md font-medium ${
             canSubmit && kingPosition && guessedArea
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              ? 'bg-red-600 text-white hover:bg-red-700'
               : 'bg-gray-400 text-gray-600 cursor-not-allowed'
           }`}
         >

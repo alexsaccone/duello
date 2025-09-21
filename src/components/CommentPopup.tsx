@@ -30,7 +30,7 @@ const CommentPopup: React.FC<CommentPopupProps> = ({ onPost, onClose }) => {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Share your thoughts..."
-          className="w-full p-3 border border-gray-300 rounded-md resize-none h-24 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full p-3 border border-gray-300 rounded-md resize-none h-24 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
           disabled={isSubmitting}
           maxLength={280}
         />
@@ -38,7 +38,7 @@ const CommentPopup: React.FC<CommentPopupProps> = ({ onPost, onClose }) => {
           <span>{content.length}/280</span>
           <div className="space-x-2">
             <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50" disabled={isSubmitting}>Cancel</button>
-            <button onClick={handleSubmit} disabled={isSubmitting || !content.trim()} className={`px-6 py-2 rounded-md font-medium ${isSubmitting || !content.trim() ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>{isSubmitting ? 'Posting...' : 'Post'}</button>
+            <button onClick={handleSubmit} disabled={isSubmitting || !content.trim()} className={`px-6 py-2 rounded-md font-medium ${isSubmitting || !content.trim() ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}>{isSubmitting ? 'Posting...' : 'Post'}</button>
           </div>
         </div>
       </div>

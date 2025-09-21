@@ -25,7 +25,7 @@ const CommentsList: React.FC<CommentsListProps> = ({ postId, comments }) => {
                     <span className="text-xs text-gray-600">👤</span>
                   </div>
                 )}
-                <span className="text-sm font-medium text-blue-600">@{c.username}</span>
+                <span className="text-sm font-medium text-red-600">@{c.username}</span>
                 <span className="text-xs text-gray-500">{new Date(c.timestamp).toLocaleString()}</span>
               </div>
               <p className="text-sm text-gray-900 whitespace-pre-wrap">{c.content}</p>

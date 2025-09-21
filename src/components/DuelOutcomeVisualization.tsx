@@ -77,7 +77,7 @@ const DuelOutcomeVisualization: React.FC<DuelOutcomeVisualizationProps> = ({
         <h4 className="text-sm font-medium text-gray-700 mb-2">Duel Visualization</h4>
         <div className="flex justify-between text-xs text-gray-600">
           <span className="flex items-center">
-            <div className="w-3 h-3 bg-blue-500 rounded mr-1"></div>
+            <div className="w-3 h-3 bg-red-500 rounded mr-1"></div>
             Your moves
           </span>
           <span className="flex items-center">
