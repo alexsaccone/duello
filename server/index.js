@@ -204,6 +204,14 @@ const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postI
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
+  // Helper to build authenticated payload with full post objects
+  const makeUserResponse = (u) => {
+    const fullPosts = posts.filter(p => p.userId === u.id);
+    const userResponse = { ...u, posts: fullPosts, elo: u.elo };
+    delete userResponse.password;
+    return userResponse;
+  };
+
   // User authentication/registration
   socket.on('register', (data) => {
     // Handle both old format (string) and new format (object)
@@ -219,11 +227,8 @@ io.on('connection', (socket) => {
     const user = createUser(username, socket.id, password, profilePicture);
     users.set(socket.id, user);
     
-    // Don't send password back to client
-    const userResponse = { ...user, elo: user.elo };
-    delete userResponse.password;
-    
-    socket.emit('authenticated', userResponse);
+  // Send authenticated payload with full post objects
+  socket.emit('authenticated', makeUserResponse(user));
 
     // Send existing posts to the new user
     socket.emit('allPosts', posts);
@@ -247,6 +252,8 @@ io.on('connection', (socket) => {
     io.emit('newPost', post);
 
     console.log(`New post by ${user.username}: ${content}`);
+  // Send updated authenticated payload (including full posts) to the creator
+  socket.emit('authenticated', makeUserResponse(user));
   });
 
   // Send duel request
@@ -531,6 +538,9 @@ io.on('connection', (socket) => {
     // Broadcast the new post to all connected clients
     io.emit('newPost', post);
 
+    // Send updated authenticated payload to the creator
+    socket.emit('authenticated', makeUserResponse(user));
+
     console.log(`Duel result forwarded by ${user.username}`);
   });
 
@@ -678,20 +688,16 @@ io.on('connection', (socket) => {
         io.to(fromUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === fromUser.id || req.toUserId === fromUser.id
         ));
-        // Send updated user stats including ELO
-        const fromUserResponse = { ...fromUser };
-        delete fromUserResponse.password;
-        io.to(fromUser.socketId).emit('authenticated', fromUserResponse);
+  // Send updated user stats including full posts and ELO
+  io.to(fromUser.socketId).emit('authenticated', makeUserResponse(fromUser));
       }
       if (toUser && toUser.socketId) {
         io.to(toUser.socketId).emit('duelCompleted', historyEntry);
         io.to(toUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === toUser.id || req.toUserId === toUser.id
         ));
-        // Send updated user stats including ELO
-        const toUserResponse = { ...toUser };
-        delete toUserResponse.password;
-        io.to(toUser.socketId).emit('authenticated', toUserResponse);
+  // Send updated user stats including full posts and ELO
+  io.to(toUser.socketId).emit('authenticated', makeUserResponse(toUser));
       }
       console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove}). ELO changes: ${fromUser.username} (${fromUserEloChange}), ${toUser.username} (${toUserEloChange})`);
     } else {
