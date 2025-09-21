@@ -389,6 +389,29 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Get user profile by username
+  socket.on('getUserProfileByUsername', (username) => {
+    const targetUser = Array.from(users.values()).find(user => user.username === username);
+    if (!targetUser) {
+      socket.emit('error', 'User not found');
+      return;
+    }
+
+    const userPosts = posts.filter(post => post.userId === targetUser.id);
+    const profile = {
+      id: targetUser.id,
+      username: targetUser.username,
+      profilePicture: targetUser.profilePicture,
+      wins: targetUser.wins,
+      losses: targetUser.losses,
+      followers: targetUser.followers,
+      elo: targetUser.elo,
+      posts: userPosts
+    };
+
+    socket.emit('userProfile', profile);
+  });
+
   // Get all posts
   socket.on('getAllPosts', () => {
     socket.emit('allPosts', posts);
