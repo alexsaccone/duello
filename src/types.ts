@@ -23,6 +23,7 @@ export interface Post {
   likes?: number; // number of likes
   likedBy?: string[]; // list of user IDs who liked this post
   duelRequests?: string[];
+  commentCount?: number; // number of comments on this post
 }
 
 export interface Point {
@@ -48,7 +49,9 @@ export interface DuelRequest {
   toUserId: string;
   toUsername: string;
   toUserElo: number;
-  postId: string;
+  postId: string; // For backward compatibility (also present when target is a comment)
+  commentId?: string; // Present when the duel was initiated on a comment
+  targetType?: 'post' | 'comment';
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
   fromUserMove?: CanvasMove | null;
@@ -64,6 +67,8 @@ export interface DuelHistory {
   toUserId: string;
   toUsername: string;
   postId: string;
+  commentId?: string;
+  targetType?: 'post' | 'comment';
   winnerId: string;
   winnerUsername: string;
   timestamp: string;
@@ -83,4 +88,19 @@ export interface UserProfile {
   followingSet?: string[];
   elo: number;
   posts: Post[];
+}
+
+// Comment structure mirrors Post plus linkage back to original post and a stable index for ordering
+export interface Comment {
+  id: string;
+  postId: string; // ID of the post this comment belongs to
+  index: number; // Order index within the post's comments (0-based)
+  userId: string;
+  username: string;
+  profilePicture?: string;
+  content: string;
+  timestamp: string;
+  authorElo: number;
+  likes?: number;
+  likedBy?: string[];
 }

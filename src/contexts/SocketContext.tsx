@@ -1,24 +1,28 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { User, Post, DuelRequest, UserProfile, DuelHistory, CanvasMove } from '../types';
+import { User, Post, DuelRequest, UserProfile, DuelHistory, CanvasMove, Comment } from '../types';
 
 interface SocketContextType {
   socket: Socket | null;
   user: User | null;
   posts: Post[];
+  commentsByPost: Record<string, Comment[]>;
   duelRequests: DuelRequest[];
   duelHistory: DuelHistory[];
   isConnected: boolean;
   login: (username: string, password?: string, profilePicture?: File | null) => void;
   logout: () => void;
   createPost: (content: string) => void;
+  createComment: (postId: string, content: string) => void;
   sendDuelRequest: (postId: string, targetUserId: string) => void;
+  sendDuelRequestOnComment: (postId: string, commentId: string, targetUserId: string) => void;
   respondToDuelRequest: (requestId: string, response: 'accepted' | 'declined') => void;
   completeDuel: (requestId: string, winnerId: string) => void;
   submitDuelMove: (requestId: string, move: CanvasMove) => void;
   searchUsers: (query: string) => void;
   getUserProfile: (userId: string) => void;
   getUserProfileByUsername: (username: string) => void;
+  getComments: (postId: string) => void;
   refreshDuelRequests: () => void;
   refreshDuelHistory: () => void;
   forwardDuelResult: (historyId: string) => void;
@@ -27,6 +31,8 @@ interface SocketContextType {
   calculateEloChange: (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => number;
   likePost: (postId: string) => void;
   unlikePost: (postId: string) => void;
+  likeComment: (commentId: string) => void;
+  unlikeComment: (commentId: string) => void;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
   followUser: (targetUserId: string) => void;
@@ -47,6 +53,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [socket, setSocket] = useState<Socket | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, Comment[]>>({});
   const [duelRequests, setDuelRequests] = useState<DuelRequest[]>([]);
   const [duelHistory, setDuelHistory] = useState<DuelHistory[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -74,7 +81,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     // Post liked/unliked (updated post object)
-    newSocket.on('postLiked', (updatedPost: Post) => {
+    const applyUpdatedPost = (updatedPost: Post) => {
       setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
       // Update selectedUserProfile if it contains this post
       setSelectedUserProfile(prev => {
@@ -89,10 +96,39 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const updatedPosts = prev.posts.map((p: any) => p.id === updatedPost.id ? updatedPost : p);
         return { ...prev, posts: updatedPosts } as User;
       });
-    });
+    };
+
+    newSocket.on('postLiked', applyUpdatedPost);
+    newSocket.on('postUpdated', applyUpdatedPost);
 
     newSocket.on('newPost', (newPost: Post) => {
       setPosts(prev => [newPost, ...prev]);
+    });
+
+    // Comments events
+    newSocket.on('newComment', (comment: Comment) => {
+      setCommentsByPost(prev => ({
+        ...prev,
+        [comment.postId]: [...(prev[comment.postId] || []), comment].sort((a, b) => a.index - b.index)
+      }));
+    });
+
+    newSocket.on('commentsForPost', ({ postId, comments }: { postId: string, comments: Comment[] }) => {
+      setCommentsByPost(prev => ({ ...prev, [postId]: comments.sort((a, b) => a.index - b.index) }));
+    });
+
+    newSocket.on('commentLiked', (updatedComment: Comment) => {
+      setCommentsByPost(prev => {
+        const list = prev[updatedComment.postId] || [];
+        return { ...prev, [updatedComment.postId]: list.map(c => c.id === updatedComment.id ? updatedComment : c) };
+      });
+    });
+
+    newSocket.on('commentDeleted', ({ postId, commentId }: { postId: string; commentId: string }) => {
+      setCommentsByPost(prev => {
+        const list = prev[postId] || [];
+        return { ...prev, [postId]: list.filter(c => c.id !== commentId) };
+      });
     });
 
     newSocket.on('duelRequestReceived', (request: DuelRequest) => {
@@ -181,9 +217,21 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const createComment = (postId: string, content: string) => {
+    if (socket) {
+      socket.emit('createComment', { postId, content });
+    }
+  };
+
   const sendDuelRequest = (postId: string, targetUserId: string) => {
     if (socket) {
       socket.emit('sendDuelRequest', { postId, targetUserId });
+    }
+  };
+
+  const sendDuelRequestOnComment = (postId: string, commentId: string, targetUserId: string) => {
+    if (socket) {
+      socket.emit('sendDuelRequest', { postId, targetUserId, targetType: 'comment', commentId });
     }
   };
 
@@ -209,6 +257,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const getUserProfileByUsername = (username: string) => {
     if (socket) {
       socket.emit('getUserProfileByUsername', username);
+    }
+  };
+
+  const getComments = (postId: string) => {
+    if (socket) {
+      socket.emit('getComments', { postId });
     }
   };
 
@@ -265,6 +319,14 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (socket) socket.emit('unlikePost', { postId });
   };
 
+  const likeComment = (commentId: string) => {
+    if (socket) socket.emit('likeComment', { commentId });
+  };
+
+  const unlikeComment = (commentId: string) => {
+    if (socket) socket.emit('unlikeComment', { commentId });
+  };
+
   const calculateEloChange = (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => {
     const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
     return Math.round(K_FACTOR * (outcome - expectedScore));
@@ -287,19 +349,23 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       socket,
       user,
       posts,
+      commentsByPost,
       duelRequests,
       duelHistory,
       isConnected,
       login,
       logout,
       createPost,
+      createComment,
       sendDuelRequest,
+      sendDuelRequestOnComment,
       respondToDuelRequest,
       completeDuel,
       submitDuelMove,
       searchUsers,
       getUserProfile,
       getUserProfileByUsername,
+      getComments,
       refreshDuelRequests,
       refreshDuelHistory,
       forwardDuelResult,
@@ -310,6 +376,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       calculateEloChange,
     likePost,
     unlikePost,
+    likeComment,
+    unlikeComment,
       searchResults,
       selectedUserProfile
     }}>

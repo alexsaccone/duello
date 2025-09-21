@@ -3,11 +3,15 @@ import { useSocket } from '../contexts/SocketContext';
 import { Post, User } from '../types';
 import { Link } from 'react-router-dom';
 import { calculateEloChange } from '../utils/elo';
+import CommentPopup from './CommentPopup';
+import CommentsList from './CommentsList';
 
 const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
   const [userCache, setUserCache] = useState<Map<string, User>>(new Map());
-  const { user, posts, duelRequests, createPost, sendDuelRequest, likePost, unlikePost, socket } = useSocket();
+  const { user, posts, duelRequests, createPost, sendDuelRequest, likePost, unlikePost, socket, commentsByPost, getComments, createComment } = useSocket();
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [commentingOnPost, setCommentingOnPost] = useState<string | null>(null);
 
   // Load user info when encountering new user IDs
   useEffect(() => {
@@ -42,10 +46,12 @@ const Feed: React.FC = () => {
 
   const hasSentDuelRequest = (postId: string, targetUserId: string) => {
     if (!user) return false;
-    return duelRequests.some(
-      req => req.fromUserId === user.id &&
-             req.toUserId === targetUserId &&
-             req.postId === postId
+    return duelRequests.some((req: any) =>
+      req.fromUserId === user.id &&
+      req.toUserId === targetUserId &&
+      req.postId === postId &&
+      // Consider it a post duel only when explicit targetType is post OR there is no commentId
+      (((req.targetType ?? (req.commentId ? 'comment' : 'post')) === 'post') && !req.commentId)
     );
   };
 
@@ -110,8 +116,8 @@ const Feed: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
-                {/* Like button and count below the post text */}
-                <div className="mt-3 flex items-center space-x-2">
+                {/* Actions: like, comment, toggle comments */}
+                <div className="mt-3 flex items-center space-x-3">
                   {user && (
                     (() => {
                       const hasLiked = post.likedBy?.includes(user.id) || false;
@@ -135,9 +141,39 @@ const Feed: React.FC = () => {
                       );
                     })()
                   )}
-
                   <span className="text-sm text-gray-600">{post.likes || 0}</span>
+
+                  {/* Comment icon and counter */}
+                  <button
+                    className="ml-1 text-gray-500 hover:text-gray-700"
+                    onClick={() => setCommentingOnPost(post.id)}
+                    title="Add a comment"
+                    aria-label="Add comment"
+                  >
+                    💬
+                  </button>
+                  <span className="text-sm text-gray-600">{post.commentCount || 0}</span>
+
+                  {/* Dropdown toggle for comments */}
+                  <button
+                    className="text-gray-500 hover:text-gray-700"
+                    onClick={() => {
+                      setExpandedPosts(prev => ({ ...prev, [post.id]: !prev[post.id] }));
+                      if (!commentsByPost[post.id]) {
+                        getComments(post.id);
+                      }
+                    }}
+                    title={expandedPosts[post.id] ? 'Hide comments' : 'Show comments'}
+                    aria-label="Toggle comments"
+                  >
+                    {expandedPosts[post.id] ? '▾' : '▸'}
+                  </button>
                 </div>
+
+                {/* Comments (collapsed by default) */}
+                {expandedPosts[post.id] && (
+                  <CommentsList postId={post.id} comments={commentsByPost[post.id] || []} />
+                )}
               </div>
 
               {user && post.userId !== user.id && (() => {
@@ -171,6 +207,13 @@ Loss: ${calculateEloChange(user.elo, userCache.get(post.userId)?.elo || 1000, 0)
           </div>
         )}
       </div>
+      {/* Comment Popup */}
+      {commentingOnPost && (
+        <CommentPopup
+          onPost={(content) => createComment(commentingOnPost, content)}
+          onClose={() => setCommentingOnPost(null)}
+        />
+      )}
     </div>
   );
 };

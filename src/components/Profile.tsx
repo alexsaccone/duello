@@ -1,10 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { useParams, Link } from 'react-router-dom';
+import CommentPopup from './CommentPopup';
+import CommentsList from './CommentsList';
 
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
-  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest, followUser, unfollowUser, likePost, unlikePost } = useSocket();
+  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest, followUser, unfollowUser, likePost, unlikePost, duelRequests } = useSocket();
+  const { commentsByPost, getComments, createComment } = useSocket();
+  const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
+  const [commentingOnPost, setCommentingOnPost] = useState<string | null>(null);
 
   const isOwnProfile = !username || username === user?.username;
   // Use the logged-in user object when viewing own profile, otherwise use selectedUserProfile
@@ -41,6 +46,16 @@ const Profile: React.FC = () => {
     if (user && profileData.id !== user.id) {
       sendDuelRequest(postId, profileData.id);
     }
+  };
+  const hasSentDuelRequest = (postId: string, targetUserId: string) => {
+    if (!user) return false;
+    // Only consider post-targeted duel requests for the post button state
+    return (duelRequests || []).some((req: any) =>
+      req.fromUserId === user.id &&
+      req.toUserId === targetUserId &&
+      req.postId === postId &&
+      (((req.targetType ?? (req.commentId ? 'comment' : 'post')) === 'post') && !req.commentId)
+    );
   };
 
   return (
@@ -144,7 +159,7 @@ const Profile: React.FC = () => {
                       </span>
                     </div>
                     <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
-                    <div className="mt-3 flex items-center space-x-2">
+                    <div className="mt-3 flex items-center space-x-3">
                       {user && (
                         (() => {
                           const hasLiked = post.likedBy?.includes(user.id) || false;
@@ -170,17 +185,53 @@ const Profile: React.FC = () => {
                       )}
 
                       <span className="text-sm text-gray-600">{post.likes || 0}</span>
+
+                      {/* Comment icon and counter */}
+                      <button
+                        className="ml-1 text-gray-500 hover:text-gray-700"
+                        onClick={() => setCommentingOnPost(post.id)}
+                        title="Add a comment"
+                        aria-label="Add comment"
+                      >
+                        💬
+                      </button>
+                      <span className="text-sm text-gray-600">{post.commentCount || 0}</span>
+
+                      {/* Dropdown toggle for comments */}
+                      <button
+                        className="text-gray-500 hover:text-gray-700"
+                        onClick={() => {
+                          setExpandedPosts(prev => ({ ...prev, [post.id]: !prev[post.id] }));
+                          if (!commentsByPost[post.id]) {
+                            getComments(post.id);
+                          }
+                        }}
+                        title={expandedPosts[post.id] ? 'Hide comments' : 'Show comments'}
+                        aria-label="Toggle comments"
+                      >
+                        {expandedPosts[post.id] ? '▾' : '▸'}
+                      </button>
                     </div>
+
+                    {expandedPosts[post.id] && (
+                      <CommentsList postId={post.id} comments={commentsByPost[post.id] || []} />
+                    )}
                   </div>
 
-                  {!isOwnProfile && user && (
-                    <button
-                      onClick={() => handleDuelRequest(post.id)}
-                      className="ml-4 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm"
-                    >
-                      ⚔️ Duel
-                    </button>
-                  )}
+                  {!isOwnProfile && user && (() => {
+                    const duelSent = hasSentDuelRequest(post.id, profileData.id);
+                    return (
+                      <button
+                        onClick={() => !duelSent && handleDuelRequest(post.id)}
+                        disabled={duelSent}
+                        className={`ml-4 px-3 py-1 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm ${
+                          duelSent ? 'bg-gray-400 text-gray-600 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'
+                        }`}
+                      >
+                        ⚔️ {duelSent ? 'Duel Sent' : 'Duel'}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ))
@@ -200,6 +251,13 @@ const Profile: React.FC = () => {
           )}
         </div>
       </div>
+      {/* Comment Popup */}
+      {commentingOnPost && (
+        <CommentPopup
+          onPost={(content) => createComment(commentingOnPost, content)}
+          onClose={() => setCommentingOnPost(null)}
+        />
+      )}
     </div>
   );
 };

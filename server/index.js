@@ -20,6 +20,7 @@ app.use(express.json());
 // In-memory data storage (for demo purposes)
 const users = new Map();
 const posts = [];
+const comments = [];
 const duelRequests = new Map();
 const duelHistory = new Map();
 
@@ -59,7 +60,8 @@ const createPost = (user, content) => ({
   authorElo: user.elo,
   duelRequests: [],
   likes: 0,
-  likedBy: []
+  likedBy: [],
+  commentCount: 0
 });
 // Generate random point source for canvas duels
 const generatePointSource = () => ({
@@ -174,7 +176,7 @@ const validateCanvasMove = (move) => {
 };
 
 // Duel request object structure
-const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUsername, toUserElo, postId) => ({
+const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUsername, toUserElo, postId, targetType = 'post', commentId = undefined) => ({
   id: uuidv4(),
   fromUserId,
   fromUsername,
@@ -183,6 +185,8 @@ const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUs
   toUsername,
   toUserElo,
   postId,
+  commentId,
+  targetType,
   status: 'pending', // pending, accepted, declined
   timestamp: new Date().toISOString(),
   fromUserMove: null,
@@ -192,13 +196,15 @@ const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUs
 });
 
 // Duel history object structure
-const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent) => ({
+const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent, targetType = 'post', commentId = undefined) => ({
   id: uuidv4(),
   fromUserId,
   fromUsername,
   toUserId,
   toUsername,
   postId,
+  commentId,
+  targetType,
   winnerId,
   winnerUsername,
   timestamp: new Date().toISOString(),
@@ -340,6 +346,89 @@ io.on('connection', (socket) => {
   socket.emit('authenticated', makeUserResponse(user));
   });
 
+  // Create a new comment on a post
+  socket.on('createComment', ({ postId, content }) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      socket.emit('error', 'Post not found');
+      return;
+    }
+    const existingCount = comments.filter(c => c.postId === postId).length;
+    const comment = {
+      id: uuidv4(),
+      postId,
+      index: existingCount,
+      userId: user.id,
+      username: user.username,
+      profilePicture: user.profilePicture,
+      content,
+      timestamp: new Date().toISOString(),
+      authorElo: user.elo,
+      likes: 0,
+      likedBy: []
+    };
+    comments.push(comment);
+    post.commentCount = (post.commentCount || 0) + 1;
+  io.emit('newComment', comment);
+  io.emit('postUpdated', post);
+  });
+
+  // Get comments for a post
+  socket.on('getComments', ({ postId }) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      socket.emit('error', 'Post not found');
+      return;
+    }
+    const postComments = comments
+      .filter(c => c.postId === postId)
+      .sort((a, b) => a.index - b.index);
+    socket.emit('commentsForPost', { postId, comments: postComments });
+  });
+
+  // Like a comment
+  socket.on('likeComment', ({ commentId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) {
+      socket.emit('error', 'Comment not found');
+      return;
+    }
+    if (!comment.likedBy) comment.likedBy = [];
+    if (comment.likedBy.includes(actor.id)) return;
+    comment.likedBy.push(actor.id);
+    comment.likes = (comment.likes || 0) + 1;
+    io.emit('commentLiked', comment);
+  });
+
+  // Unlike a comment
+  socket.on('unlikeComment', ({ commentId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) {
+      socket.emit('error', 'Comment not found');
+      return;
+    }
+    if (!comment.likedBy) comment.likedBy = [];
+    if (!comment.likedBy.includes(actor.id)) return;
+    comment.likedBy = comment.likedBy.filter(id => id !== actor.id);
+    comment.likes = Math.max(0, (comment.likes || 1) - 1);
+    io.emit('commentLiked', comment);
+  });
+
   // Like a post
   socket.on('likePost', ({ postId }) => {
     const actor = users.get(socket.id);
@@ -387,8 +476,8 @@ io.on('connection', (socket) => {
     io.emit('postLiked', post);
   });
 
-  // Send duel request
-  socket.on('sendDuelRequest', ({ postId, targetUserId }) => {
+  // Send duel request (can target post or comment)
+  socket.on('sendDuelRequest', ({ postId, targetUserId, targetType = 'post', commentId = undefined }) => {
     const requester = users.get(socket.id);
     if (!requester) {
       socket.emit('error', 'Not authenticated');
@@ -402,10 +491,17 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if duel request already exists
-    const existingRequest = Array.from(duelRequests.values()).find(
-      req => req.fromUserId === requester.id && req.toUserId === targetUserId && req.postId === postId
-    );
+    // Check if duel request already exists (distinguish post vs comment targets)
+    const existingRequest = Array.from(duelRequests.values()).find(req => {
+      const sameUsersAndPost = req.fromUserId === requester.id && req.toUserId === targetUserId && req.postId === postId;
+      if (!sameUsersAndPost) return false;
+      const sameTargetType = (req.targetType || 'post') === (targetType || 'post');
+      if (!sameTargetType) return false;
+      if ((targetType || 'post') === 'comment') {
+        return req.commentId === commentId;
+      }
+      return true;
+    });
 
     if (existingRequest) {
       socket.emit('error', 'Duel request already sent');
@@ -419,7 +515,9 @@ io.on('connection', (socket) => {
       targetUserId,
       targetUser.username,
       targetUser.elo,
-      postId
+      postId,
+      targetType,
+      commentId
     );
 
     duelRequests.set(duelRequest.id, duelRequest);
@@ -581,8 +679,9 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Find the original post
-    const originalPost = posts.find(p => p.id === duelRequest.postId);
+  // Find the original post and possibly the target comment
+  const originalPost = posts.find(p => p.id === duelRequest.postId);
+  const targetComment = duelRequest.commentId ? comments.find(c => c.id === duelRequest.commentId) : null;
 
     // Create duel history entry
     const historyEntry = createDuelHistory(
@@ -593,7 +692,9 @@ io.on('connection', (socket) => {
       duelRequest.postId,
       winnerId,
       winner.username,
-      originalPost ? originalPost.content : ''
+      targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
+      duelRequest.targetType,
+      duelRequest.commentId
     );
 
     duelHistory.set(historyEntry.id, historyEntry);
@@ -675,7 +776,7 @@ io.on('connection', (socket) => {
     console.log(`Duel result forwarded by ${user.username}`);
   });
 
-  // Destroy post (challenger wins scenario)
+  // Destroy post or comment (challenger wins scenario)
   socket.on('destroyPost', ({ historyId }) => {
     const user = users.get(socket.id);
     if (!user) {
@@ -700,17 +801,31 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Find and mark post as deleted
-    const postIndex = posts.findIndex(p => p.id === historyEntry.postId);
-    if (postIndex !== -1) {
-      posts.splice(postIndex, 1); // Remove from posts array
+    if (historyEntry.targetType === 'comment' && historyEntry.commentId) {
+      // Delete comment
+      const cIdx = comments.findIndex(c => c.id === historyEntry.commentId);
+      if (cIdx !== -1) {
+        const postId = comments[cIdx].postId;
+        comments.splice(cIdx, 1);
+        const post = posts.find(p => p.id === postId);
+        if (post) {
+          post.commentCount = Math.max(0, (post.commentCount || 1) - 1);
+          io.emit('postUpdated', post);
+        }
+        io.emit('commentDeleted', { commentId: historyEntry.commentId, postId });
+      }
+    } else {
+      // Find and mark post as deleted
+      const postIndex = posts.findIndex(p => p.id === historyEntry.postId);
+      if (postIndex !== -1) {
+        posts.splice(postIndex, 1); // Remove from posts array
+      }
+      // Broadcast post deletion to all users
+      io.emit('postDeleted', { postId: historyEntry.postId });
     }
 
     // Mark in history
     historyEntry.postDestroyed = true;
-
-    // Broadcast post deletion to all users
-    io.emit('postDeleted', { postId: historyEntry.postId });
 
     // Send updated duel history to both participants
     const fromUser = Array.from(users.values()).find(u => u.id === historyEntry.fromUserId);
@@ -910,8 +1025,9 @@ io.on('connection', (socket) => {
       fromUser.elo += fromUserEloChange;
       toUser.elo += toUserEloChange;
 
-      // Find the original post
-      const originalPost = posts.find(p => p.id === duelRequest.postId);
+  // Find the original post and possibly the target comment
+  const originalPost = posts.find(p => p.id === duelRequest.postId);
+  const targetComment = duelRequest.commentId ? comments.find(c => c.id === duelRequest.commentId) : null;
 
       // Create duel history entry
       const historyEntry = createDuelHistory(
@@ -922,7 +1038,9 @@ io.on('connection', (socket) => {
         duelRequest.postId,
         winnerId,
         winnerUsername,
-        originalPost ? originalPost.content : ''
+        targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
+        duelRequest.targetType,
+        duelRequest.commentId
       );
 
       duelHistory.set(historyEntry.id, historyEntry);
