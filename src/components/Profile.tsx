@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
-  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest } = useSocket();
+  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest, followUser, unfollowUser } = useSocket();
 
   const isOwnProfile = !username || username === user?.username;
   // Use the logged-in user object when viewing own profile, otherwise use selectedUserProfile
@@ -62,10 +62,33 @@ const Profile: React.FC = () => {
             )}
             <div>
               <h1 className="text-2xl font-bold text-gray-900">@{profileData.username}</h1>
-              <div className="flex items-center space-x-6 mt-2 text-sm text-gray-600">
-                <span>👥 {profileData.followers} followers</span>
-                <span>⚔️ Win Rate: {getWinRate()}</span>
-                <span>📊 ELO: {profileData.elo}</span>
+              <div className="mt-2 text-sm text-gray-600">
+                <div className="flex items-center space-x-6">
+                  <span>👥 {profileData.followers} followers</span>
+                  <span>⚔️ Win Rate: {getWinRate()}</span>
+                  <span>📊 ELO: {profileData.elo}</span>
+                </div>
+
+                {/* Follow/Following button (only when viewing another user's profile) */}
+                {!isOwnProfile && user && (
+                  <div className="mt-2">
+                    { (user.followingSet && user.followingSet.includes(profileData.id)) || (user.followingSet === undefined && false) ? (
+                      <button
+                        onClick={() => unfollowUser(profileData.id)}
+                        className="bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300 text-sm"
+                      >
+                        Following
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => followUser(profileData.id)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm"
+                      >
+                        Follow
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

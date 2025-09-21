@@ -6,6 +6,8 @@ export interface User {
   wins: number;
   losses: number;
   followers: number;
+  followersSet?: string[]; // list of user IDs who follow this user
+  followingSet?: string[]; // list of user IDs this user follows
   elo: number;
   posts?: string[];
 }
@@ -75,6 +77,8 @@ export interface UserProfile {
   wins: number;
   losses: number;
   followers: number;
+  followersSet?: string[];
+  followingSet?: string[];
   elo: number;
   posts: Post[];
 }

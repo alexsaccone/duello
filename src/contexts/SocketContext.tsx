@@ -27,6 +27,8 @@ interface SocketContextType {
   calculateEloChange: (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => number;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
+  followUser: (targetUserId: string) => void;
+  unfollowUser: (targetUserId: string) => void;
 }
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -213,6 +215,18 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const followUser = (targetUserId: string) => {
+    if (socket) {
+      socket.emit('followUser', { targetUserId });
+    }
+  };
+
+  const unfollowUser = (targetUserId: string) => {
+    if (socket) {
+      socket.emit('unfollowUser', { targetUserId });
+    }
+  };
+
   const submitDuelMove = (requestId: string, move: CanvasMove) => {
     if (socket) {
       socket.emit('submitDuelMove', { requestId, move });
@@ -259,6 +273,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       refreshDuelRequests,
       refreshDuelHistory,
       forwardDuelResult,
+  followUser,
+  unfollowUser,
       destroyPost,
       postOnBehalf,
       calculateEloChange,

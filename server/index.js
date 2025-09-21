@@ -33,6 +33,8 @@ const createUser = (username, socketId, password, profilePicture) => ({
   wins: 0,
   losses: 0,
   followers: 0,
+  followersSet: new Set(), // set of user IDs who follow this user
+  followingSet: new Set(), // set of user IDs this user follows
   elo: 1000, // Initialize ELO for new users
   posts: []
 });
@@ -209,10 +211,88 @@ io.on('connection', (socket) => {
   // Helper to build authenticated payload with full post objects
   const makeUserResponse = (u) => {
     const fullPosts = posts.filter(p => p.userId === u.id);
-    const userResponse = { ...u, posts: fullPosts, elo: u.elo };
-    delete userResponse.password;
+    const userResponse = { 
+      id: u.id,
+      username: u.username,
+      profilePicture: u.profilePicture,
+      wins: u.wins,
+      losses: u.losses,
+      followers: (u.followersSet && typeof u.followersSet.size === 'number') ? u.followersSet.size : (u.followers || 0),
+      followersSet: u.followersSet ? Array.from(u.followersSet) : [],
+      followingSet: u.followingSet ? Array.from(u.followingSet) : [],
+      elo: u.elo,
+      posts: fullPosts
+    };
     return userResponse;
   };
+
+  // Follow a user
+  socket.on('followUser', ({ targetUserId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const target = Array.from(users.values()).find(u => u.id === targetUserId);
+    if (!target) {
+      socket.emit('error', 'Target user not found');
+      return;
+    }
+    if (!actor.followingSet) actor.followingSet = new Set();
+    if (!target.followersSet) target.followersSet = new Set();
+
+    if (actor.followingSet.has(target.id)) {
+      // already following
+      socket.emit('error', 'Already following');
+      return;
+    }
+
+    actor.followingSet.add(target.id);
+    target.followersSet.add(actor.id);
+
+    // update followers count
+    target.followers = target.followersSet.size;
+
+    // notify both users
+    socket.emit('authenticated', makeUserResponse(actor));
+    if (target.socketId) io.to(target.socketId).emit('authenticated', makeUserResponse(target));
+    // also emit updated userProfile for target if someone is viewing
+    socket.emit('userProfile', makeUserResponse(target));
+  });
+
+  // Unfollow a user
+  socket.on('unfollowUser', ({ targetUserId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const target = Array.from(users.values()).find(u => u.id === targetUserId);
+    if (!target) {
+      socket.emit('error', 'Target user not found');
+      return;
+    }
+    if (!actor.followingSet) actor.followingSet = new Set();
+    if (!target.followersSet) target.followersSet = new Set();
+
+    if (!actor.followingSet.has(target.id)) {
+      // not following
+      socket.emit('error', 'Not following');
+      return;
+    }
+
+    actor.followingSet.delete(target.id);
+    target.followersSet.delete(actor.id);
+
+    // update followers count
+    target.followers = target.followersSet.size;
+
+    // notify both users
+    socket.emit('authenticated', makeUserResponse(actor));
+    if (target.socketId) io.to(target.socketId).emit('authenticated', makeUserResponse(target));
+    // also emit updated userProfile for target
+    socket.emit('userProfile', makeUserResponse(target));
+  });
 
   // User authentication/registration
   socket.on('register', (data) => {
