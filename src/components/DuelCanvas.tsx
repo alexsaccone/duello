@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Stage, Layer, Circle, Line, Text, Group } from 'react-konva';
+import { Stage, Layer, Circle, Line, Text, Group, Rect } from 'react-konva';
 import { CanvasMove, Point, GuessedArea } from '../types';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, GUESS_AREA_RADIUS, GUESS_AREA_SPRITE_BANK_RADIUS } from '../constants';
 
@@ -160,12 +160,26 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
       <div className="bg-white border-2 border-gray-300 rounded-lg">
         <Stage width={CANVAS_WIDTH} height={TOTAL_HEIGHT} {...({} as any)}>
           <Layer>
-            {/* Canvas background */}
-            <Circle
+            {/* Canvas background with radial gradient */}
+            <Rect
               x={0}
               y={0}
-              radius={CANVAS_WIDTH * 2}
-              fill="white"
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              fillRadialGradientStartPoint={{ x: pointSource.x, y: pointSource.y }}
+              fillRadialGradientEndPoint={{ x: pointSource.x, y: pointSource.y }}
+              fillRadialGradientStartRadius={0}
+              fillRadialGradientEndRadius={Math.sqrt(CANVAS_WIDTH * CANVAS_WIDTH + CANVAS_HEIGHT * CANVAS_HEIGHT) * 1.5}
+              fillRadialGradientColorStops={[
+                0, 'rgba(0, 255, 0, 1)',
+                0.02, 'rgba(0, 220, 0, 0.9)',
+                0.08, 'rgba(0, 180, 0, 0.7)',
+                0.20, 'rgba(0, 140, 0, 0.4)',
+                0.40, 'rgba(0, 100, 0, 0.2)',
+                0.60, 'rgba(0, 60, 0, 0.1)',
+                0.80, 'rgba(240, 250, 240, 0.8)',
+                1, 'rgba(255, 255, 255, 1)'
+              ]}
             />
 
             {/* Canvas border */}
