@@ -10,10 +10,3 @@ const createDuelRequest = async (fromUserId, toUserId, postId) => {
   await duelRequest.save();
   return duelRequest;
 };
-
-// Usage example
-const duelRequest = await createDuelRequest(
-  requester._id,
-  targetUser._id,
-  postId
-);

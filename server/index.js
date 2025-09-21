@@ -1,12 +1,14 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./db.js"; // MongoDB connection
-import User from "./models/User.js";
-import Post from "./models/Post.js";
-import DuelRequest from "./models/DuelRequest.js";
+import User from "./models/user.js";
+import Post from "./models/post.js";
+import DuelRequest from "./models/duelRequest.js";
 
 dotenv.config();
 connectDB();
@@ -19,7 +21,9 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use("/", express.static(path.join(__dirname, "../build")));
 app.use(cors());
 app.use(express.json());
 
