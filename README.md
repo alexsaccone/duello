@@ -1,21 +1,26 @@
 # Duello
+*"Have the final say."*
 
-A Twitter-style social media app with dueling functionality built for Big Red Hacks 2025.
+A text-based social media app that, harkening back to the days of yore, allows people to resolve disputes through duels. Built for Big Red Hacks 2025.
 
 ## Features
 
-- **Post Creation**: Users can create and share text posts (up to 280 characters)
-- **Real-time Feed**: See all posts from connected users in real-time
-- **Duel System**: Challenge other users to duels on their posts
-- **User Profiles**: View user profiles with win/loss ratios and follower counts
-- **User Search**: Search for other users by username
-- **Duel Management**: Accept/decline duel requests and view active duels
+- **Text-Based Social Media**: Create and share posts (up to 280 characters) in a real-time feed
+- **Duel System**: Challenge other users to single-turn, asynchronous, prediction-based duels on their posts
+- **Interactive Canvas Dueling**: Place your king and guess your opponent's position to win
+- **Duel Stakes**: Real consequences for dueling - winners can destroy posts or hijack accounts
+- **Duel History & Visualization**: Review past duels with visual representations of moves
+- **ELO Rating System**: Skill-based matchmaking with dynamic rating adjustments
+- **User Profiles**: Comprehensive profiles showing stats, win/loss ratios, and ELO ratings
+- **User Search**: Find and challenge other users by username
+- **Real-time Updates**: Live notifications and updates via WebSocket connections
 
 ## Tech Stack
 
-- **Frontend**: React.js with TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express.js, Socket.io
-- **Real-time Communication**: WebSockets via Socket.io
+- **Frontend**: React.js with TypeScript, Tailwind CSS, Konva.js for canvas rendering
+- **Backend**: Node.js with Express.js and Socket.io for real-time communication
+- **Game Engine**: Custom canvas-based dueling system with move validation
+- **Architecture**: Real-time WebSocket communication with in-memory state management
 
 ## Getting Started
 
@@ -61,18 +66,13 @@ The application will be available at:
 ## How to Use
 
 1. **Login**: Enter a unique username to join the platform
-2. **Create Posts**: Share your thoughts in the main feed
+2. **Create Posts**: Share your thoughts in the main feed (up to 280 characters)
 3. **Send Duel Requests**: Click the "Duel" button on any post to challenge the author
-4. **Manage Duels**: Use the Duels tab to accept/decline requests and view active duels
-5. **Search Users**: Find other users and view their profiles
-6. **View Profiles**: Click on usernames to see user profiles with stats and posts
-
-## Features Not Yet Implemented
-
-- **Actual Dueling Mechanics**: Currently only handles duel requests and notifications
-- **User Registration/Persistence**: Users are stored in memory only
-- **Following System**: Follower counts are placeholder values
-- **Real-time Notifications**: Basic notifications via Socket.io
+4. **Accept Duels**: Use the Duels tab to accept/decline incoming requests
+5. **Play Duels**: Place your king near the target and guess where your opponent will place theirs
+6. **Duel Stakes**: Winners can destroy the original post or hijack the loser's account to post on their behalf
+7. **Review History**: View past duels with visual representations of both players' moves
+8. **Search Users**: Find other users and view their profiles with ELO ratings and duel history
 
 ## Project Structure
 
@@ -91,11 +91,7 @@ duello/
 
 ## Demo Notes
 
-This is a hackathon demo focused on core functionality. The app uses in-memory storage, so data will be lost when the server restarts. For a production version, you would want to add:
+This is a hackathon demo focused on core functionality. The app uses in-memory storage, so data will be lost when the server restarts. For a production version, we would want to add:
 
-- Database persistence (MongoDB, PostgreSQL, etc.)
-- User authentication with passwords
-- Actual game mechanics for duels
-- Real-time notifications
-- File uploads for avatars
 - Mobile responsiveness improvements
+- Enhanced security measures

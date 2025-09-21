@@ -196,7 +196,7 @@ const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUs
 });
 
 // Duel history object structure
-const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent, targetType = 'post', commentId = undefined) => ({
+const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent, fromUserMove = null, toUserMove = null, pointSource = null, targetType = 'post', commentId = undefined) => ({
   id: uuidv4(),
   fromUserId,
   fromUsername,
@@ -210,7 +210,10 @@ const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postI
   timestamp: new Date().toISOString(),
   originalPostContent,
   postDestroyed: false,
-  hijackPostUsed: false
+  hijackPostUsed: false,
+  fromUserMove,
+  toUserMove,
+  pointSource
 });
 
 io.on('connection', (socket) => {
@@ -694,7 +697,10 @@ io.on('connection', (socket) => {
       winner.username,
       targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
       duelRequest.targetType,
-      duelRequest.commentId
+      duelRequest.commentId,
+      duelRequest.fromUserMove,
+      duelRequest.toUserMove,
+      duelRequest.pointSource
     );
 
     duelHistory.set(historyEntry.id, historyEntry);
@@ -842,6 +848,11 @@ io.on('connection', (socket) => {
       ));
     }
 
+    // Send updated authenticated data to post author if they're online
+    if (postAuthor && postAuthor.socketId) {
+      io.to(postAuthor.socketId).emit('authenticated', makeUserResponse(postAuthor));
+    }
+
     console.log(`Post ${historyEntry.postId} destroyed by ${user.username}`);
   });
 
@@ -903,6 +914,11 @@ io.on('connection', (socket) => {
       io.to(toUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
         h => h.fromUserId === toUser.id || h.toUserId === toUser.id
       ));
+    }
+
+    // Send updated authenticated data to the hijacked user to refresh their profile
+    if (loserUser && loserUser.socketId) {
+      io.to(loserUser.socketId).emit('authenticated', makeUserResponse(loserUser));
     }
 
     console.log(`${user.username} posted on behalf of ${loserUser.username}: ${content}`);
@@ -1040,7 +1056,10 @@ io.on('connection', (socket) => {
         winnerUsername,
         targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
         duelRequest.targetType,
-        duelRequest.commentId
+        duelRequest.commentId,
+        duelRequest.fromUserMove,
+        duelRequest.toUserMove,
+        duelRequest.pointSource
       );
 
       duelHistory.set(historyEntry.id, historyEntry);
