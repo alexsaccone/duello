@@ -23,7 +23,7 @@ const io = new Server(server, {
 });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/", express.static(path.join(__dirname, "../build")));
+app.use("/", express.static(path.join(__dirname, "../public")));
 app.use(cors());
 app.use(express.json());
 
