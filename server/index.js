@@ -696,11 +696,12 @@ io.on('connection', (socket) => {
       winnerId,
       winner.username,
       targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
-      duelRequest.targetType,
-      duelRequest.commentId,
+      // Correct order: fromUserMove, toUserMove, pointSource, targetType, commentId
       duelRequest.fromUserMove,
       duelRequest.toUserMove,
-      duelRequest.pointSource
+      duelRequest.pointSource,
+      duelRequest.targetType,
+      duelRequest.commentId
     );
 
     duelHistory.set(historyEntry.id, historyEntry);
@@ -1055,11 +1056,12 @@ io.on('connection', (socket) => {
         winnerId,
         winnerUsername,
         targetComment ? targetComment.content : (originalPost ? originalPost.content : ''),
-        duelRequest.targetType,
-        duelRequest.commentId,
+        // Correct order: fromUserMove, toUserMove, pointSource, targetType, commentId
         duelRequest.fromUserMove,
         duelRequest.toUserMove,
-        duelRequest.pointSource
+        duelRequest.pointSource,
+        duelRequest.targetType,
+        duelRequest.commentId
       );
 
       duelHistory.set(historyEntry.id, historyEntry);
