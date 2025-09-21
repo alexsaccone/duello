@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { User, Post, DuelRequest, UserProfile, DuelHistory } from '../types';
+import { User, Post, DuelRequest, UserProfile, DuelHistory, CanvasMove } from '../types';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -15,7 +15,7 @@ interface SocketContextType {
   sendDuelRequest: (postId: string, targetUserId: string) => void;
   respondToDuelRequest: (requestId: string, response: 'accepted' | 'declined') => void;
   completeDuel: (requestId: string, winnerId: string) => void;
-  submitDuelMove: (requestId: string, move: number) => void;
+  submitDuelMove: (requestId: string, move: CanvasMove) => void;
   searchUsers: (query: string) => void;
   getUserProfile: (userId: string) => void;
   getUserProfileByUsername: (username: string) => void;
@@ -207,7 +207,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const submitDuelMove = (requestId: string, move: number) => {
+  const submitDuelMove = (requestId: string, move: CanvasMove) => {
     if (socket) {
       socket.emit('submitDuelMove', { requestId, move });
     }

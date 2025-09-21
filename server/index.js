@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
+import {CANVAS_HEIGHT, CANVAS_WIDTH, GUESS_AREA_RADIUS} from "./constants.js"
 
 const app = express();
 const server = http.createServer(app);
@@ -56,6 +57,117 @@ const createPost = (user, content) => ({
   authorElo: user.elo,
   duelRequests: []
 });
+// Generate random point source for canvas duels
+const generatePointSource = () => ({
+  x: Math.random() * CANVAS_WIDTH,
+  y: Math.random() * CANVAS_HEIGHT
+});
+
+// Calculate euclidean distance between two points
+const calculateDistance = (point1, point2) => {
+  const dx = point1.x - point2.x;
+  const dy = point1.y - point2.y;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+// Check if a point is inside a circular area
+const isPointInCircle = (point, circleCenter, radius) => {
+  const distance = calculateDistance(point, circleCenter);
+  return distance <= radius;
+};
+
+// Calculate score based on distance to point source
+const calculateScore = (kingPosition, pointSource, isKingGuessed) => {
+  if (isKingGuessed) {
+    return 0; // No points if king was guessed
+  }
+  const distance = calculateDistance(kingPosition, pointSource);
+  return 1 / (distance + 1);
+};
+
+// Determine winner based on canvas duel scoring rules
+const calculateCanvasDuelWinner = (move1, move2, pointSource) => {
+  // Extract data from moves
+  const king1 = move1.kingPosition;
+  const guessedArea1 = move1.guessedArea;
+  const king2 = move2.kingPosition;
+  const guessedArea2 = move2.guessedArea;
+
+  // Check if kings are guessed by opponents
+  const king1Guessed = isPointInCircle(king1, guessedArea2.center, guessedArea2.radius);
+  const king2Guessed = isPointInCircle(king2, guessedArea1.center, guessedArea1.radius);
+
+  // Calculate scores
+  const player1Score = calculateScore(king1, pointSource, king1Guessed);
+  const player2Score = calculateScore(king2, pointSource, king2Guessed);
+
+  // Determine winner
+  let winnerId;
+  if (player1Score > player2Score) {
+    winnerId = 0; // Player 1 wins
+  } else if (player2Score > player1Score) {
+    winnerId = 1; // Player 2 wins
+  } else {
+    winnerId = 2; // Tie
+  }
+
+  return {
+    winnerId,
+    player1Score,
+    player2Score,
+    king1Guessed,
+    king2Guessed
+  };
+};
+
+// Validate canvas move structure
+const validateCanvasMove = (move) => {
+  if (!move || typeof move !== 'object') {
+    return false;
+  }
+
+  // Check king position
+  if (!move.kingPosition ||
+      typeof move.kingPosition.x !== 'number' ||
+      typeof move.kingPosition.y !== 'number') {
+    return false;
+  }
+
+  // Validate king position bounds
+  if (move.kingPosition.x < 0 || move.kingPosition.x > CANVAS_WIDTH ||
+      move.kingPosition.y < 0 || move.kingPosition.y > CANVAS_HEIGHT) {
+    return false;
+  }
+
+  // Check guessed area
+  if (!move.guessedArea ||
+      !move.guessedArea.center ||
+      typeof move.guessedArea.center.x !== 'number' ||
+      typeof move.guessedArea.center.y !== 'number' ||
+      typeof move.guessedArea.radius !== 'number') {
+    return false;
+  }
+
+  // Validate guessed area center bounds
+  if (move.guessedArea.center.x < 0 || move.guessedArea.center.x > CANVAS_WIDTH ||
+      move.guessedArea.center.y < 0 || move.guessedArea.center.y > CANVAS_HEIGHT) {
+    return false;
+  }
+
+  // Validate guessed area radius bounds (fixed radius)
+  if (move.guessedArea.radius !== GUESS_AREA_RADIUS) {
+    return false;
+  }
+
+  // Check for NaN, Infinity, or non-finite numbers
+  if (!Number.isFinite(move.kingPosition.x) || !Number.isFinite(move.kingPosition.y) ||
+      !Number.isFinite(move.guessedArea.center.x) || !Number.isFinite(move.guessedArea.center.y) ||
+      !Number.isFinite(move.guessedArea.radius)) {
+    return false;
+  }
+
+  return true;
+};
 
 // Duel request object structure
 const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUsername, toUserElo, postId) => ({
@@ -71,7 +183,8 @@ const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUs
   timestamp: new Date().toISOString(),
   fromUserMove: null,
   toUserMove: null,
-  gameState: 'waiting_for_moves'
+  gameState: 'waiting_for_moves',
+  pointSource: generatePointSource() // Generate random point source for this duel
 });
 
 // Duel history object structure
@@ -398,7 +511,7 @@ io.on('connection', (socket) => {
     console.log(`Duel result forwarded by ${user.username}`);
   });
 
-  // Submit move for duel
+  // Submit canvas move for duel
   socket.on('submitDuelMove', ({ requestId, move }) => {
     const user = users.get(socket.id);
     if (!user) {
@@ -422,6 +535,12 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Validate canvas move structure
+    if (!validateCanvasMove(move)) {
+      socket.emit('error', 'Invalid move data');
+      return;
+    }
+
     // Determine which user is submitting the move
     const isFromUser = duelRequest.fromUserId === user.id;
 
@@ -435,20 +554,19 @@ io.on('connection', (socket) => {
     // Store the move
     if (isFromUser) {
       duelRequest.fromUserMove = move;
-      console.log(`Stored fromUserMove: ${move} for user ${user.username}`);
+      console.log(`Stored canvas move for user ${user.username}:`, move);
     } else {
       duelRequest.toUserMove = move;
-      console.log(`Stored toUserMove: ${move} for user ${user.username}`);
+      console.log(`Stored canvas move for user ${user.username}:`, move);
     }
 
-    console.log(`Move submitted by ${user.username}: ${move}`);
+    console.log(`Canvas move submitted by ${user.username}`);
 
     // Check if both players have moved
-    console.log(`Checking moves: fromUserMove=${duelRequest.fromUserMove}, toUserMove=${duelRequest.toUserMove}`);
     if (duelRequest.fromUserMove !== null && duelRequest.fromUserMove !== undefined &&
         duelRequest.toUserMove !== null && duelRequest.toUserMove !== undefined) {
+  
       // Both players have moved, calculate winner
-      let winnerId, winnerUsername;
       let fromUserOutcome, toUserOutcome; // 1 for win, 0.5 for draw, 0 for loss
 
       const fromUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
@@ -464,22 +582,31 @@ io.on('connection', (socket) => {
       const oldFromUserElo = fromUser.elo;
       const oldToUserElo = toUser.elo;
 
-      if (duelRequest.fromUserMove > duelRequest.toUserMove) {
+      // Both players have moved, calculate winner using canvas scoring
+      const result = calculateCanvasDuelWinner(
+        duelRequest.fromUserMove,
+        duelRequest.toUserMove,
+        duelRequest.pointSource
+      );
+
+      let winnerId, winnerUsername;
+      if (result.winnerId === 0) {
+        fromUserOutcome = 1
+        toUserOutcome = 0
         winnerId = duelRequest.fromUserId;
         winnerUsername = duelRequest.fromUsername;
-        fromUserOutcome = 1;
-        toUserOutcome = 0;
-      } else if (duelRequest.toUserMove > duelRequest.fromUserMove) {
+      } else if (result.winnerId === 1) {
+        fromUserOutcome = 0;
+        toUserOutcome = 1;
         winnerId = duelRequest.toUserId;
         winnerUsername = duelRequest.toUsername;
         fromUserOutcome = 0;
         toUserOutcome = 1;
       } else {
-        // Tie
-        winnerId = 'tie';
-        winnerUsername = 'tie';
         fromUserOutcome = 0.5;
         toUserOutcome = 0.5;
+        winnerId = 'tie';
+        winnerUsername = 'tie';
       }
 
       // Calculate ELO changes
@@ -543,7 +670,6 @@ io.on('connection', (socket) => {
         delete toUserResponse.password;
         io.to(toUser.socketId).emit('authenticated', toUserResponse);
       }
-
       console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove}). ELO changes: ${fromUser.username} (${fromUserEloChange}), ${toUser.username} (${toUserEloChange})`);
     } else {
       // Only one player has moved, notify both players of the update
@@ -561,7 +687,7 @@ io.on('connection', (socket) => {
         ));
       }
 
-      console.log(`Waiting for other player's move in duel ${requestId}`);
+      console.log(`Waiting for other player's canvas move in duel ${requestId}`);
     }
   });
 

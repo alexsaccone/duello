@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DuelRequest } from '../types';
+import { DuelRequest, CanvasMove, Point } from '../types';
 import { useSocket } from '../contexts/SocketContext';
+import DuelCanvas from './DuelCanvas';
 import { calculateEloChange } from '../utils/elo';
 
 interface DuelPopupProps {
@@ -10,7 +11,6 @@ interface DuelPopupProps {
 
 const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
   const { user, submitDuelMove } = useSocket();
-  const [move, setMove] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
@@ -20,23 +20,10 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
       const isFromUser = duel.fromUserId === user.id;
       const userMove = isFromUser ? duel.fromUserMove : duel.toUserMove;
       setHasSubmitted(userMove !== null && userMove !== undefined);
-
-      // If user has submitted, set the move value for display
-      if (userMove !== null && userMove !== undefined) {
-        setMove(userMove);
-      }
     }
   }, [duel, user]);
 
-  // Remove the auto-close effect since we want manual control
-
-  // Generate random move
-  const generateRandomMove = () => {
-    const randomMove = Math.floor(Math.random() * 1001); // 0 to 1000
-    setMove(randomMove);
-  };
-
-  const handleSubmit = async () => {
+  const handleCanvasSubmit = async (move: CanvasMove) => {
     if (isSubmitting || hasSubmitted) return;
 
     setIsSubmitting(true);
@@ -54,14 +41,17 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
   const opponentMove = isFromUser ? duel.toUserMove : duel.fromUserMove;
   const opponentHasSubmitted = opponentMove !== null && opponentMove !== undefined;
 
+  // Default point source if not provided (for backward compatibility)
+  const pointSource: Point = duel.pointSource || { x: 400, y: 300 };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-96 max-w-90vw">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl p-6 max-w-6xl max-h-[95vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-900">⚔️ Duel Arena</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 text-2xl"
           >
             ✕
           </button>
@@ -98,7 +88,7 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
             </div>
           </div>
           <p className="text-xs text-gray-500 mb-2">
-            Submit a number between 0 and 1000. Higher number wins!
+            Strategic canvas-based duel! Place your king close to the target and guess where your opponent will place theirs.
           </p>
           {opponentHasSubmitted && (
             <p className="text-xs text-green-600">
@@ -119,52 +109,30 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
             <p className="text-sm text-gray-600">
               Waiting for @{opponentUsername} to make their move...
             </p>
+            <button
+              onClick={onClose}
+              className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            >
+              Close
+            </button>
           </div>
         ) : (
-          <>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Move
-              </label>
-              <div className="flex items-center space-x-2 mb-3">
-                <input
-                  type="number"
-                  min="0"
-                  max="1000"
-                  value={move}
-                  onChange={(e) => setMove(parseInt(e.target.value) || 0)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter number (0-1000)"
-                />
-                <button
-                  onClick={generateRandomMove}
-                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-                >
-                  Random
-                </button>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{move}</div>
-                <div className="text-xs text-gray-500">Your current move</div>
-              </div>
-            </div>
+          <div className="space-y-4">
+            <DuelCanvas
+              pointSource={pointSource}
+              onSubmitMove={handleCanvasSubmit}
+              canSubmit={!isSubmitting && !hasSubmitted}
+            />
 
-            <div className="flex space-x-3">
+            <div className="flex justify-center">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
                 Cancel
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || move < 0 || move > 1000}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit Move'}
-              </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

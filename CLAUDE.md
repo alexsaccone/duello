@@ -1,0 +1,1 @@
+- Project memory: Duel game canvas dimension constants are stored in src/constants.tsx
