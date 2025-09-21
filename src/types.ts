@@ -68,6 +68,9 @@ export interface DuelHistory {
   originalPostContent?: string;
   postDestroyed: boolean;
   hijackPostUsed: boolean;
+  fromUserMove?: CanvasMove | null;
+  toUserMove?: CanvasMove | null;
+  pointSource?: Point;
 }
 
 export interface UserProfile {

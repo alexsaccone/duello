@@ -115,6 +115,16 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     newSocket.on('postDeleted', ({ postId }: { postId: string }) => {
       setPosts(prev => prev.filter(post => post.id !== postId));
+      // Also update selectedUserProfile if it contains the deleted post
+      setSelectedUserProfile(prev => {
+        if (prev && prev.posts) {
+          return {
+            ...prev,
+            posts: prev.posts.filter(post => post.id !== postId)
+          };
+        }
+        return prev;
+      });
     });
 
     newSocket.on('error', (message: string) => {

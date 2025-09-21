@@ -3,6 +3,7 @@ import { useSocket } from '../contexts/SocketContext';
 import { Link } from 'react-router-dom';
 import DuelPopup from './DuelPopup';
 import PostOnBehalfPopup from './PostOnBehalfPopup';
+import DuelOutcomeVisualization from './DuelOutcomeVisualization';
 
 const Duels: React.FC = () => {
   const {
@@ -20,6 +21,7 @@ const Duels: React.FC = () => {
 
   const [activeDuelPopup, setActiveDuelPopup] = useState<string | null>(null);
   const [postOnBehalfPopup, setPostOnBehalfPopup] = useState<{ historyId: string; targetUsername: string } | null>(null);
+  const [expandedVisualizations, setExpandedVisualizations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     refreshDuelRequests();
@@ -92,6 +94,18 @@ const Duels: React.FC = () => {
 
   const handleCloseDuelPopup = () => {
     setActiveDuelPopup(null);
+  };
+
+  const handleToggleVisualization = (historyId: string) => {
+    setExpandedVisualizations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(historyId)) {
+        newSet.delete(historyId);
+      } else {
+        newSet.add(historyId);
+      }
+      return newSet;
+    });
   };
 
   const getDuelButtonState = (request: any) => {
@@ -382,8 +396,34 @@ const Duels: React.FC = () => {
                             }
                           }
                         })()}
+                        {history.fromUserMove && history.toUserMove && history.pointSource && (
+                          <button
+                            onClick={() => handleToggleVisualization(history.id)}
+                            className="bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 text-sm"
+                          >
+                            {expandedVisualizations.has(history.id) ? 'Hide guesses' : 'Show guesses'}
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Visualization Component */}
+                    {expandedVisualizations.has(history.id) &&
+                     history.fromUserMove &&
+                     history.toUserMove &&
+                     history.pointSource && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <DuelOutcomeVisualization
+                          fromUserMove={history.fromUserMove}
+                          toUserMove={history.toUserMove}
+                          pointSource={history.pointSource}
+                          currentUserId={user.id}
+                          fromUserId={history.fromUserId}
+                          fromUsername={history.fromUsername}
+                          toUsername={history.toUsername}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
