@@ -64,6 +64,8 @@ export interface DuelHistory {
   winnerUsername: string;
   timestamp: string;
   originalPostContent?: string;
+  postDestroyed: boolean;
+  hijackPostUsed: boolean;
 }
 
 export interface UserProfile {
