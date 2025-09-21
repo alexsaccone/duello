@@ -344,6 +344,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const destroyPost = (historyId: string) => {
     if (socket) {
+      // Optimistic update: mark as destroyed locally for instant UI feedback
+      setDuelHistory(prev => prev.map(h => h.id === historyId ? { ...h, postDestroyed: true } : h));
       socket.emit('destroyPost', { historyId });
     }
   };
