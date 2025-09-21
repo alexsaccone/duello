@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Stage, Layer, Circle, Line, Text, Group } from 'react-konva';
 import { CanvasMove, Point, GuessedArea } from '../types';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, GUESS_AREA_RADIUS, GUESS_AREA_SPRITE_BANK_RADIUS } from '../constants';
 
 interface DuelCanvasProps {
   pointSource: Point;
@@ -14,6 +13,8 @@ interface DraggedSprite {
   id: string;
 }
 
+const CANVAS_WIDTH = 800;
+const CANVAS_HEIGHT = 600;
 const SPRITE_BANK_HEIGHT = 120;
 const TOTAL_HEIGHT = CANVAS_HEIGHT + SPRITE_BANK_HEIGHT;
 
@@ -66,7 +67,7 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
     if (pos.y < CANVAS_HEIGHT && pos.x >= 0 && pos.x <= CANVAS_WIDTH) {
       setGuessedArea({
         center: { x: pos.x, y: pos.y },
-        radius: GUESS_AREA_RADIUS
+        radius: guessedArea?.radius || 100 // Default radius
       });
     } else {
       // Snap back to sprite bank if dropped outside canvas
@@ -128,7 +129,7 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
   );
 
   const drawGuessedArea = (x: number, y: number, radius: number, isPlaced: boolean) => (
-    <Group 
+    <Group
       x={x}
       y={y}
       draggable={!isDragging || draggedSprite?.type === 'guessedArea'}
@@ -154,6 +155,15 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
     </Group>
   );
 
+  const adjustGuessedAreaRadius = (delta: number) => {
+    if (guessedArea) {
+      const newRadius = Math.max(20, Math.min(100, guessedArea.radius + delta));
+      setGuessedArea({
+        ...guessedArea,
+        radius: newRadius
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -197,7 +207,7 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
             {kingPosition && drawKing(kingPosition.x, kingPosition.y, true)}
 
             {/* Placed Guessed Area */}
-            {guessedArea && drawGuessedArea(guessedArea.center.x, guessedArea.center.y, GUESS_AREA_RADIUS, true)}
+            {guessedArea && drawGuessedArea(guessedArea.center.x, guessedArea.center.y, guessedArea.radius, true)}
 
             {/* Sprite Bank Background */}
             <Line
@@ -221,13 +231,32 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
             {!kingPosition && drawKing(spriteBank.king.x, spriteBank.king.y, false)}
 
             {/* Sprite Bank - Guessed Area */}
-            {!guessedArea && drawGuessedArea(spriteBank.guessedArea.x, spriteBank.guessedArea.y, GUESS_AREA_SPRITE_BANK_RADIUS, false)}
+            {!guessedArea && drawGuessedArea(spriteBank.guessedArea.x, spriteBank.guessedArea.y, 100, false)}
           </Layer>
         </Stage>
       </div>
 
       {/* Controls */}
       <div className="flex flex-col items-center space-y-2">
+        {guessedArea && (
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Guess Area Size:</span>
+            <button
+              onClick={() => adjustGuessedAreaRadius(-10)}
+              className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              -
+            </button>
+            <span className="text-sm font-medium">{guessedArea.radius}</span>
+            <button
+              onClick={() => adjustGuessedAreaRadius(10)}
+              className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              +
+            </button>
+          </div>
+        )}
+
         <button
           onClick={handleCanvasMove}
           disabled={!canSubmit || !kingPosition || !guessedArea}

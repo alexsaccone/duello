@@ -3,6 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
+import {CANVAS_HEIGHT, CANVAS_WIDTH, GUESS_AREA_RADIUS} from "./constants.js"
 
 const app = express();
 const server = http.createServer(app);
@@ -45,11 +46,10 @@ const createPost = (userId, username, content, profilePicture) => ({
   timestamp: new Date().toISOString(),
   duelRequests: []
 });
-
 // Generate random point source for canvas duels
 const generatePointSource = () => ({
-  x: Math.random() * 800,
-  y: Math.random() * 600
+  x: Math.random() * CANVAS_WIDTH,
+  y: Math.random() * CANVAS_HEIGHT
 });
 
 // Calculate euclidean distance between two points
@@ -122,9 +122,9 @@ const validateCanvasMove = (move) => {
     return false;
   }
 
-  // Validate king position bounds (canvas is 800x600)
-  if (move.kingPosition.x < 0 || move.kingPosition.x > 800 ||
-      move.kingPosition.y < 0 || move.kingPosition.y > 600) {
+  // Validate king position bounds
+  if (move.kingPosition.x < 0 || move.kingPosition.x > CANVAS_WIDTH ||
+      move.kingPosition.y < 0 || move.kingPosition.y > CANVAS_HEIGHT) {
     return false;
   }
 
@@ -137,14 +137,14 @@ const validateCanvasMove = (move) => {
     return false;
   }
 
-  // Validate guessed area center bounds (canvas is 800x600)
-  if (move.guessedArea.center.x < 0 || move.guessedArea.center.x > 800 ||
-      move.guessedArea.center.y < 0 || move.guessedArea.center.y > 600) {
+  // Validate guessed area center bounds
+  if (move.guessedArea.center.x < 0 || move.guessedArea.center.x > CANVAS_WIDTH ||
+      move.guessedArea.center.y < 0 || move.guessedArea.center.y > CANVAS_HEIGHT) {
     return false;
   }
 
-  // Validate guessed area radius bounds (20-100 as per frontend)
-  if (move.guessedArea.radius < 20 || move.guessedArea.radius > 100) {
+  // Validate guessed area radius bounds (fixed radius)
+  if (move.guessedArea.radius !== GUESS_AREA_RADIUS) {
     return false;
   }
 

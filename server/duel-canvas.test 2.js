@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import {CANVAS_WIDTH, CANVAS_HEIGHT, GUESS_AREA_RADIUS} from "./constants.js"
 
 // New duel scoring system for canvas-based gameplay
 class CanvasDuelServer {
@@ -39,10 +38,10 @@ class CanvasDuelServer {
   }
 
   generatePointSource() {
-    // Generate random point source location within canvas bounds
+    // Generate random point source location within canvas bounds (0-800 x 0-600)
     return {
-      x: Math.random() * CANVAS_WIDTH,
-      y: Math.random() * CANVAS_HEIGHT
+      x: Math.random() * 800,
+      y: Math.random() * 600
     };
   }
 
@@ -124,9 +123,9 @@ class CanvasDuelServer {
       return false;
     }
 
-    // Validate king position bounds
-    if (move.kingPosition.x < 0 || move.kingPosition.x > CANVAS_WIDTH ||
-        move.kingPosition.y < 0 || move.kingPosition.y > CANVAS_HEIGHT) {
+    // Validate king position bounds (canvas is 800x600)
+    if (move.kingPosition.x < 0 || move.kingPosition.x > 800 ||
+        move.kingPosition.y < 0 || move.kingPosition.y > 600) {
       return false;
     }
 
@@ -139,14 +138,14 @@ class CanvasDuelServer {
       return false;
     }
 
-    // Validate guessed area center bounds
-    if (move.guessedArea.center.x < 0 || move.guessedArea.center.x > CANVAS_WIDTH ||
-        move.guessedArea.center.y < 0 || move.guessedArea.center.y > CANVAS_HEIGHT) {
+    // Validate guessed area center bounds (canvas is 800x600)
+    if (move.guessedArea.center.x < 0 || move.guessedArea.center.x > 800 ||
+        move.guessedArea.center.y < 0 || move.guessedArea.center.y > 600) {
       return false;
     }
 
-    // Validate guessed area radius bounds (fixed radius)
-    if (move.guessedArea.radius !== GUESS_AREA_RADIUS) {
+    // Validate guessed area radius bounds (20-100 as per frontend)
+    if (move.guessedArea.radius < 20 || move.guessedArea.radius > 100) {
       return false;
     }
 
@@ -392,7 +391,7 @@ describe('Canvas Duel System Tests', () => {
       };
       const move2 = {
         kingPosition: { x: 450, y: 350 },
-        guessedArea: { center: { x: 410, y: 310 }, radius: GUESS_AREA_RADIUS } // Guesses player 1's king
+        guessedArea: { center: { x: 410, y: 310 }, radius: 50 } // Guesses player 1's king
       };
 
       const result = server.calculateDuelWinner(move1, move2, pointSource);
@@ -407,11 +406,11 @@ describe('Canvas Duel System Tests', () => {
     test('should be a tie when both kings are guessed', () => {
       const move1 = {
         kingPosition: { x: 410, y: 310 },
-        guessedArea: { center: { x: 450, y: 350 }, radius: GUESS_AREA_RADIUS } // Guesses player 2's king
+        guessedArea: { center: { x: 450, y: 350 }, radius: 50 } // Guesses player 2's king
       };
       const move2 = {
         kingPosition: { x: 450, y: 350 },
-        guessedArea: { center: { x: 410, y: 310 }, radius: GUESS_AREA_RADIUS } // Guesses player 1's king
+        guessedArea: { center: { x: 410, y: 310 }, radius: 50 } // Guesses player 1's king
       };
 
       const result = server.calculateDuelWinner(move1, move2, pointSource);
@@ -444,7 +443,7 @@ describe('Canvas Duel System Tests', () => {
     test('should accept valid canvas move', () => {
       const validMove = {
         kingPosition: { x: 100, y: 100 },
-        guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+        guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
       };
 
       expect(() => {
@@ -454,7 +453,7 @@ describe('Canvas Duel System Tests', () => {
 
     test('should reject move with missing king position', () => {
       const invalidMove = {
-        guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+        guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
       };
 
       expect(() => {
@@ -477,11 +476,11 @@ describe('Canvas Duel System Tests', () => {
     test('should complete duel and update stats when both players submit canvas moves', () => {
       const move1 = {
         kingPosition: { x: 410, y: 310 },
-        guessedArea: { center: { x: 100, y: 100 }, radius: GUESS_AREA_RADIUS }
+        guessedArea: { center: { x: 100, y: 100 }, radius: 30 }
       };
       const move2 = {
         kingPosition: { x: 450, y: 350 },
-        guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+        guessedArea: { center: { x: 200, y: 200 }, radius: 30 }
       };
 
       // Initial stats
@@ -524,7 +523,7 @@ describe('Canvas Duel System Tests', () => {
       test('should accept valid move within all bounds', () => {
         const validMove = {
           kingPosition: { x: 400, y: 300 },
-          guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+          guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
         };
         expect(server.validateCanvasMove(validMove)).toBe(true);
         expect(() => {
@@ -536,11 +535,11 @@ describe('Canvas Duel System Tests', () => {
         const validMoves = [
           {
             kingPosition: { x: 0, y: 0 },
-            guessedArea: { center: { x: 800, y: 600 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 800, y: 600 }, radius: 20 }
           },
           {
             kingPosition: { x: 800, y: 600 },
-            guessedArea: { center: { x: 0, y: 0 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 0, y: 0 }, radius: 100 }
           }
         ];
 
@@ -555,19 +554,19 @@ describe('Canvas Duel System Tests', () => {
         const invalidMoves = [
           {
             kingPosition: { x: -1, y: 300 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 801, y: 300 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: -1 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 601 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           }
         ];
 
@@ -582,19 +581,19 @@ describe('Canvas Duel System Tests', () => {
       test('should reject missing or invalid king position', () => {
         const invalidMoves = [
           {
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: null,
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: "invalid", y: 300 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           }
         ];
 
@@ -612,19 +611,19 @@ describe('Canvas Duel System Tests', () => {
         const invalidMoves = [
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: -1, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: -1, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: 801, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 801, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: 200, y: -1 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: -1 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: 200, y: 601 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 601 }, radius: 50 }
           }
         ];
 
@@ -675,11 +674,11 @@ describe('Canvas Duel System Tests', () => {
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { radius: GUESS_AREA_RADIUS } // Missing center
+            guessedArea: { radius: 50 } // Missing center
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: 200 }, radius: GUESS_AREA_RADIUS } // Missing y coordinate
+            guessedArea: { center: { x: 200 }, radius: 50 } // Missing y coordinate
           }
         ];
 
@@ -697,11 +696,11 @@ describe('Canvas Duel System Tests', () => {
         const invalidMoves = [
           {
             kingPosition: { x: NaN, y: 300 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: NaN, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: NaN, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
@@ -721,7 +720,7 @@ describe('Canvas Duel System Tests', () => {
         const invalidMoves = [
           {
             kingPosition: { x: Infinity, y: 300 },
-            guessedArea: { center: { x: 200, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 200, y: 200 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
@@ -729,7 +728,7 @@ describe('Canvas Duel System Tests', () => {
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: -Infinity, y: 200 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: -Infinity, y: 200 }, radius: 50 }
           }
         ];
 
@@ -761,11 +760,11 @@ describe('Canvas Duel System Tests', () => {
         const maliciousMoves = [
           {
             kingPosition: { x: 1000, y: 300 },
-            guessedArea: { center: { x: 400, y: 300 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 400, y: 300 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
-            guessedArea: { center: { x: 1000, y: 300 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 1000, y: 300 }, radius: 50 }
           }
         ];
 
@@ -782,7 +781,7 @@ describe('Canvas Duel System Tests', () => {
         const edge_case_moves = [
           {
             kingPosition: { x: 800.0000000001, y: 300 },
-            guessedArea: { center: { x: 400, y: 300 }, radius: GUESS_AREA_RADIUS }
+            guessedArea: { center: { x: 400, y: 300 }, radius: 50 }
           },
           {
             kingPosition: { x: 400, y: 300 },
