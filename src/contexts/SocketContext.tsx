@@ -22,6 +22,7 @@ interface SocketContextType {
   refreshDuelRequests: () => void;
   refreshDuelHistory: () => void;
   forwardDuelResult: (historyId: string) => void;
+  calculateEloChange: (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => number;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
 }
@@ -212,6 +213,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const K_FACTOR = 32; // Max ELO adjustment per game
+
+  const calculateEloChange = (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => {
+    const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
+    return Math.round(K_FACTOR * (outcome - expectedScore));
+  };
+
   return (
     <SocketContext.Provider value={{
       socket,
@@ -233,6 +241,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       refreshDuelRequests,
       refreshDuelHistory,
       forwardDuelResult,
+      calculateEloChange,
       searchResults,
       selectedUserProfile
     }}>

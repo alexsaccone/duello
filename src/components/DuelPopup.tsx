@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DuelRequest, CanvasMove, Point } from '../types';
 import { useSocket } from '../contexts/SocketContext';
 import DuelCanvas from './DuelCanvas';
+import { calculateEloChange } from '../utils/elo';
 
 interface DuelPopupProps {
   duel: DuelRequest;
@@ -60,6 +61,32 @@ const DuelPopup: React.FC<DuelPopupProps> = ({ duel, onClose }) => {
           <p className="text-sm text-gray-600 mb-2">
             Dueling against <span className="font-medium text-blue-600">@{opponentUsername}</span>
           </p>
+          <div className="bg-gray-50 p-3 rounded-lg mb-3">
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <span>Your ELO: {isFromUser ? duel.fromUserElo : duel.toUserElo}</span>
+              <span>Their ELO: {isFromUser ? duel.toUserElo : duel.fromUserElo}</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              <span>Potential changes: </span>
+              <span className="text-green-600">Win: +{Math.abs(calculateEloChange(
+                isFromUser ? duel.fromUserElo : duel.toUserElo,
+                isFromUser ? duel.toUserElo : duel.fromUserElo,
+                1
+              ))}</span>
+              <span className="text-gray-600 mx-1">|</span>
+              <span className="text-yellow-600">Draw: {calculateEloChange(
+                isFromUser ? duel.fromUserElo : duel.toUserElo,
+                isFromUser ? duel.toUserElo : duel.fromUserElo,
+                0.5
+              )}</span>
+              <span className="text-gray-600 mx-1">|</span>
+              <span className="text-red-600">Loss: {calculateEloChange(
+                isFromUser ? duel.fromUserElo : duel.toUserElo,
+                isFromUser ? duel.toUserElo : duel.fromUserElo,
+                0
+              )}</span>
+            </div>
+          </div>
           <p className="text-xs text-gray-500 mb-2">
             Strategic canvas-based duel! Place your king close to the target and guess where your opponent will place theirs.
           </p>
