@@ -6,8 +6,9 @@ const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest } = useSocket();
 
-  const profileData = username ? selectedUserProfile : user;
   const isOwnProfile = !username || username === user?.username;
+  // Use the logged-in user object when viewing own profile, otherwise use selectedUserProfile
+  const profileData = isOwnProfile ? user : selectedUserProfile;
 
   useEffect(() => {
     if (username && username !== user?.username) {
@@ -92,7 +93,7 @@ const Profile: React.FC = () => {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {selectedUserProfile?.posts?.map((post) => (
+          {profileData?.posts?.map((post: any) => (
             <div key={post.id} className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -132,13 +133,13 @@ const Profile: React.FC = () => {
               </div>
             </div>
           )) || (user && isOwnProfile && user.posts?.map((postId) => (
-            // For own profile, we'd need to get actual post data - simplified for demo
+            // For own profile, fall back to lightweight rendering when full post objects are not available
             <div key={postId} className="p-4">
               <p className="text-gray-500">Post {postId}</p>
             </div>
           )))}
 
-          {(!selectedUserProfile?.posts || selectedUserProfile.posts.length === 0) && (
+          {(!profileData?.posts || profileData.posts.length === 0) && (
             <div className="p-8 text-center">
               <p className="text-gray-500">
                 {isOwnProfile ? "You haven't posted anything yet." : "This user hasn't posted anything yet."}
