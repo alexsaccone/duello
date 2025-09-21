@@ -223,7 +223,7 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
             />
 
             <Text
-              text="Sprite Bank - Drag to Canvas"
+              text="Drag to Canvas"
               x={20}
               y={CANVAS_HEIGHT + 20}
               fontSize={16}
@@ -260,8 +260,8 @@ const DuelCanvas: React.FC<DuelCanvasProps> = ({ pointSource, onSubmitMove, canS
         <p className="mb-2">
           <strong>How to play:</strong>
         </p>
-        <p className="mb-1">1. Drag your King (X) and Guess Area (red circle) from the sprite bank to the canvas</p>
-        <p className="mb-1">2. Place your King close to the yellow target to score points</p>
+        <p className="mb-1">1. Drag your King (X) and Guess Area (red circle) from the bank into the canvas</p>
+        <p className="mb-1">2. Place your King closer to the yellow target to score more points</p>
         <p className="mb-1">3. Use your Guess Area to try to capture your opponent's King</p>
         <p>4. If your King is captured, you get 0 points. Otherwise, closer to target = more points!</p>
       </div>
