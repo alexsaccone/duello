@@ -19,6 +19,21 @@ export interface Post {
   duelRequests?: string[];
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface GuessedArea {
+  center: Point;
+  radius: number;
+}
+
+export interface CanvasMove {
+  kingPosition: Point;
+  guessedArea: GuessedArea;
+}
+
 export interface DuelRequest {
   id: string;
   fromUserId: string;
@@ -28,9 +43,10 @@ export interface DuelRequest {
   postId: string;
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
-  fromUserMove?: number | null;
-  toUserMove?: number | null;
+  fromUserMove?: CanvasMove | null;
+  toUserMove?: CanvasMove | null;
   gameState?: 'waiting_for_moves' | 'completed';
+  pointSource?: Point; // The target point for the duel
 }
 
 export interface DuelHistory {
