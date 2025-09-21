@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 
 const Profile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
-  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest, followUser, unfollowUser } = useSocket();
+  const { user, selectedUserProfile, getUserProfileByUsername, sendDuelRequest, followUser, unfollowUser, likePost, unlikePost } = useSocket();
 
   const isOwnProfile = !username || username === user?.username;
   // Use the logged-in user object when viewing own profile, otherwise use selectedUserProfile
@@ -116,53 +116,82 @@ const Profile: React.FC = () => {
         </div>
 
         <div className="divide-y divide-gray-200">
-          {profileData?.posts?.map((post: any) => (
-            <div key={post.id} className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    {post.profilePicture ? (
-                      <img
-                        src={post.profilePicture}
-                        alt={`${post.username}'s profile`}
-                        className="w-8 h-8 rounded-full object-cover border border-gray-300"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
-                        <span className="text-sm text-gray-600">👤</span>
-                      </div>
-                    )}
-                    <Link
-                      to={`/profile/${post.username}`}
-                      className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      @{post.username}
-                    </Link>
-                    <span className="text-gray-500 text-sm">
-                      {formatTimestamp(post.timestamp)}
-                    </span>
+          {profileData?.posts && profileData.posts.length > 0 ? (
+            profileData.posts.map((post: any) => (
+              <div key={post.id} className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      {post.profilePicture ? (
+                        <img
+                          src={post.profilePicture}
+                          alt={`${post.username}'s profile`}
+                          className="w-8 h-8 rounded-full object-cover border border-gray-300"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center border border-gray-300">
+                          <span className="text-sm text-gray-600">👤</span>
+                        </div>
+                      )}
+                      <Link
+                        to={`/profile/${post.username}`}
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        @{post.username}
+                      </Link>
+                      <span className="text-gray-500 text-sm">
+                        {formatTimestamp(post.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
+                    <div className="mt-3 flex items-center space-x-2">
+                      {user && (
+                        (() => {
+                          const hasLiked = post.likedBy?.includes(user.id) || false;
+                          const heartClass = hasLiked ? 'text-red-600' : 'text-gray-400';
+                          return (
+                            <button
+                              onClick={() => {
+                                if (hasLiked) {
+                                  unlikePost(post.id);
+                                } else {
+                                  likePost(post.id);
+                                }
+                              }}
+                              className="focus:outline-none"
+                              aria-label={hasLiked ? 'Unlike' : 'Like'}
+                            >
+                              <span className={`${heartClass} text-xl`}>
+                                {hasLiked ? '❤️' : '🤍'}
+                              </span>
+                            </button>
+                          );
+                        })()
+                      )}
+
+                      <span className="text-sm text-gray-600">{post.likes || 0}</span>
+                    </div>
                   </div>
-                  <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
+
+                  {!isOwnProfile && user && (
+                    <button
+                      onClick={() => handleDuelRequest(post.id)}
+                      className="ml-4 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm"
+                    >
+                      ⚔️ Duel
+                    </button>
+                  )}
                 </div>
-
-                {!isOwnProfile && user && (
-                  <button
-                    onClick={() => handleDuelRequest(post.id)}
-                    className="ml-4 bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm"
-                  >
-                    ⚔️ Duel
-                  </button>
-                )}
               </div>
-            </div>
-          )) || (user && isOwnProfile && user.posts?.map((postId) => (
-            // For own profile, fall back to lightweight rendering when full post objects are not available
-            <div key={postId} className="p-4">
-              <p className="text-gray-500">Post {postId}</p>
-            </div>
-          )))}
-
-          {(!profileData?.posts || profileData.posts.length === 0) && (
+            ))
+          ) : user && isOwnProfile && user.posts ? (
+            // Fallback for own profile when only post IDs are available
+            (user.posts as string[]).filter((p: any) => typeof p === 'string').map((postId: any) => (
+              <div key={postId as string} className="p-4">
+                <p className="text-gray-500">Post {postId}</p>
+              </div>
+            ))
+          ) : (
             <div className="p-8 text-center">
               <p className="text-gray-500">
                 {isOwnProfile ? "You haven't posted anything yet." : "This user hasn't posted anything yet."}

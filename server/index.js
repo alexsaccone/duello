@@ -57,7 +57,9 @@ const createPost = (user, content) => ({
   content,
   timestamp: new Date().toISOString(),
   authorElo: user.elo,
-  duelRequests: []
+  duelRequests: [],
+  likes: 0,
+  likedBy: []
 });
 // Generate random point source for canvas duels
 const generatePointSource = () => ({
@@ -336,6 +338,53 @@ io.on('connection', (socket) => {
     console.log(`New post by ${user.username}: ${content}`);
   // Send updated authenticated payload (including full posts) to the creator
   socket.emit('authenticated', makeUserResponse(user));
+  });
+
+  // Like a post
+  socket.on('likePost', ({ postId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      socket.emit('error', 'Post not found');
+      return;
+    }
+    if (!post.likedBy) post.likedBy = [];
+    if (post.likedBy.includes(actor.id)) {
+      // already liked
+      return;
+    }
+    post.likedBy.push(actor.id);
+    post.likes = (post.likes || 0) + 1;
+
+    // Broadcast updated post to all clients
+    io.emit('postLiked', post);
+  });
+
+  // Unlike a post
+  socket.on('unlikePost', ({ postId }) => {
+    const actor = users.get(socket.id);
+    if (!actor) {
+      socket.emit('error', 'Not authenticated');
+      return;
+    }
+    const post = posts.find(p => p.id === postId);
+    if (!post) {
+      socket.emit('error', 'Post not found');
+      return;
+    }
+    if (!post.likedBy) post.likedBy = [];
+    if (!post.likedBy.includes(actor.id)) {
+      // not liked
+      return;
+    }
+    post.likedBy = post.likedBy.filter(id => id !== actor.id);
+    post.likes = Math.max(0, (post.likes || 1) - 1);
+
+    io.emit('postLiked', post);
   });
 
   // Send duel request

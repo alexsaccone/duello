@@ -9,7 +9,7 @@ export interface User {
   followersSet?: string[]; // list of user IDs who follow this user
   followingSet?: string[]; // list of user IDs this user follows
   elo: number;
-  posts?: string[];
+  posts?: string[] | Post[];
 }
 
 export interface Post {
@@ -20,6 +20,8 @@ export interface Post {
   content: string;
   timestamp: string;
   authorElo: number;
+  likes?: number; // number of likes
+  likedBy?: string[]; // list of user IDs who liked this post
   duelRequests?: string[];
 }
 

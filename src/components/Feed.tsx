@@ -7,7 +7,7 @@ import { calculateEloChange } from '../utils/elo';
 const Feed: React.FC = () => {
   const [newPost, setNewPost] = useState('');
   const [userCache, setUserCache] = useState<Map<string, User>>(new Map());
-  const { user, posts, duelRequests, createPost, sendDuelRequest, socket } = useSocket();
+  const { user, posts, duelRequests, createPost, sendDuelRequest, likePost, unlikePost, socket } = useSocket();
 
   // Load user info when encountering new user IDs
   useEffect(() => {
@@ -110,6 +110,34 @@ const Feed: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-gray-900 whitespace-pre-wrap">{post.content}</p>
+                {/* Like button and count below the post text */}
+                <div className="mt-3 flex items-center space-x-2">
+                  {user && (
+                    (() => {
+                      const hasLiked = post.likedBy?.includes(user.id) || false;
+                      const heartClass = hasLiked ? 'text-red-600' : 'text-gray-400';
+                      return (
+                        <button
+                          onClick={() => {
+                            if (hasLiked) {
+                              unlikePost(post.id);
+                            } else {
+                              likePost(post.id);
+                            }
+                          }}
+                          className={`focus:outline-none`}
+                          aria-label={hasLiked ? 'Unlike' : 'Like'}
+                        >
+                          <span className={`${heartClass} text-xl`}>
+                            {hasLiked ? '❤️' : '🤍'}
+                          </span>
+                        </button>
+                      );
+                    })()
+                  )}
+
+                  <span className="text-sm text-gray-600">{post.likes || 0}</span>
+                </div>
               </div>
 
               {user && post.userId !== user.id && (() => {

@@ -25,6 +25,8 @@ interface SocketContextType {
   destroyPost: (historyId: string) => void;
   postOnBehalf: (historyId: string, content: string) => void;
   calculateEloChange: (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => number;
+  likePost: (postId: string) => void;
+  unlikePost: (postId: string) => void;
   searchResults: User[];
   selectedUserProfile: UserProfile | null;
   followUser: (targetUserId: string) => void;
@@ -71,6 +73,24 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setPosts(allPosts);
     });
 
+    // Post liked/unliked (updated post object)
+    newSocket.on('postLiked', (updatedPost: Post) => {
+      setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+      // Update selectedUserProfile if it contains this post
+      setSelectedUserProfile(prev => {
+        if (!prev) return prev;
+        const updatedPosts = prev.posts.map(p => p.id === updatedPost.id ? updatedPost : p);
+        return { ...prev, posts: updatedPosts };
+      });
+      // Update authenticated user's posts if present
+      setUser(prev => {
+        if (!prev) return prev;
+        if (!prev.posts) return prev;
+        const updatedPosts = prev.posts.map((p: any) => p.id === updatedPost.id ? updatedPost : p);
+        return { ...prev, posts: updatedPosts } as User;
+      });
+    });
+
     newSocket.on('newPost', (newPost: Post) => {
       setPosts(prev => [newPost, ...prev]);
     });
@@ -78,6 +98,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     newSocket.on('duelRequestReceived', (request: DuelRequest) => {
       setDuelRequests(prev => [...prev, request]);
     });
+
 
     newSocket.on('duelRequestSent', (request: DuelRequest) => {
       setDuelRequests(prev => [...prev, request]);
@@ -235,6 +256,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const K_FACTOR = 32; // Max ELO adjustment per game
 
+  // Emit like/unlike events to server
+  const likePost = (postId: string) => {
+    if (socket) socket.emit('likePost', { postId });
+  };
+
+  const unlikePost = (postId: string) => {
+    if (socket) socket.emit('unlikePost', { postId });
+  };
+
   const calculateEloChange = (playerElo: number, opponentElo: number, outcome: 0 | 0.5 | 1) => {
     const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
     return Math.round(K_FACTOR * (outcome - expectedScore));
@@ -275,9 +305,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       forwardDuelResult,
   followUser,
   unfollowUser,
-      destroyPost,
+    destroyPost,
       postOnBehalf,
       calculateEloChange,
+    likePost,
+    unlikePost,
       searchResults,
       selectedUserProfile
     }}>
