@@ -1,4 +1,4 @@
-import DuelRequest from "./models/DuelRequest.js";
+import DuelRequest from "./models/duelRequest.js";
 
 const createDuelRequest = async (fromUserId, toUserId, postId) => {
   const duelRequest = new DuelRequest({

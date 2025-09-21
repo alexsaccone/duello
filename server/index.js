@@ -9,7 +9,7 @@ import connectDB from "./db.js"; // MongoDB connection
 import User from "./models/user.js";
 import Post from "./models/post.js";
 import DuelRequest from "./models/duelRequest.js";
-
+import authRoutes from "./auth.js"; // adjust path
 dotenv.config();
 connectDB();
 
@@ -23,9 +23,11 @@ const io = new Server(server, {
 });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/", express.static(path.join(__dirname, "../public")));
+app.use("/", express.static(path.join(__dirname, "../build")));
 app.use(cors());
 app.use(express.json());
+
+app.use("/api/auth", authRoutes);
 
 // Socket.IO logic
 io.on("connection", (socket) => {

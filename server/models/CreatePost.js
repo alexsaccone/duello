@@ -1,5 +1,5 @@
-import Post from "./models/Post.js";
-import User from "./models/User.js";
+import Post from "./models/post.js";
+import User from "./models/user.js";
 
 const createPost = async (userId, content) => {
   const user = await User.findById(userId);
