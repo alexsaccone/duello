@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSocket } from '../contexts/SocketContext';
 import { Link } from 'react-router-dom';
 import DuelPopup from './DuelPopup';
+import DuelOutcomeVisualization from './DuelOutcomeVisualization';
 
 const Duels: React.FC = () => {
   const {
@@ -16,6 +17,7 @@ const Duels: React.FC = () => {
   } = useSocket();
 
   const [activeDuelPopup, setActiveDuelPopup] = useState<string | null>(null);
+  const [expandedVisualizations, setExpandedVisualizations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     refreshDuelRequests();
@@ -70,6 +72,18 @@ const Duels: React.FC = () => {
 
   const handleCloseDuelPopup = () => {
     setActiveDuelPopup(null);
+  };
+
+  const handleToggleVisualization = (historyId: string) => {
+    setExpandedVisualizations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(historyId)) {
+        newSet.delete(historyId);
+      } else {
+        newSet.add(historyId);
+      }
+      return newSet;
+    });
   };
 
   const getDuelButtonState = (request: any) => {
@@ -301,7 +315,7 @@ const Duels: React.FC = () => {
                           {formatTimestamp(history.timestamp)}
                         </p>
                       </div>
-                      <div>
+                      <div className="flex space-x-2">
                         <button
                           onClick={() => handleForwardResult(history.id)}
                           className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
@@ -309,8 +323,34 @@ const Duels: React.FC = () => {
                           <span>Forward</span>
                           <span>→</span>
                         </button>
+                        {history.fromUserMove && history.toUserMove && history.pointSource && (
+                          <button
+                            onClick={() => handleToggleVisualization(history.id)}
+                            className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 text-sm"
+                          >
+                            {expandedVisualizations.has(history.id) ? 'Hide guesses' : 'Show guesses'}
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Visualization Component */}
+                    {expandedVisualizations.has(history.id) &&
+                     history.fromUserMove &&
+                     history.toUserMove &&
+                     history.pointSource && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <DuelOutcomeVisualization
+                          fromUserMove={history.fromUserMove}
+                          toUserMove={history.toUserMove}
+                          pointSource={history.pointSource}
+                          currentUserId={user.id}
+                          fromUserId={history.fromUserId}
+                          fromUsername={history.fromUsername}
+                          toUsername={history.toUsername}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}

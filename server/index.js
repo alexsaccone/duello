@@ -188,7 +188,7 @@ const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUs
 });
 
 // Duel history object structure
-const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent) => ({
+const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postId, winnerId, winnerUsername, originalPostContent, fromUserMove = null, toUserMove = null, pointSource = null) => ({
   id: uuidv4(),
   fromUserId,
   fromUsername,
@@ -198,7 +198,12 @@ const createDuelHistory = (fromUserId, fromUsername, toUserId, toUsername, postI
   winnerId,
   winnerUsername,
   timestamp: new Date().toISOString(),
-  originalPostContent
+  originalPostContent,
+  postDestroyed: false,
+  hijackPostUsed: false,
+  fromUserMove,
+  toUserMove,
+  pointSource
 });
 
 io.on('connection', (socket) => {
@@ -455,7 +460,10 @@ io.on('connection', (socket) => {
       duelRequest.postId,
       winnerId,
       winner.username,
-      originalPost ? originalPost.content : ''
+      originalPost ? originalPost.content : '',
+      duelRequest.fromUserMove,
+      duelRequest.toUserMove,
+      duelRequest.pointSource
     );
 
     duelHistory.set(historyEntry.id, historyEntry);
@@ -663,7 +671,10 @@ io.on('connection', (socket) => {
         duelRequest.postId,
         winnerId,
         winnerUsername,
-        originalPost ? originalPost.content : ''
+        originalPost ? originalPost.content : '',
+        duelRequest.fromUserMove,
+        duelRequest.toUserMove,
+        duelRequest.pointSource
       );
 
       duelHistory.set(historyEntry.id, historyEntry);
