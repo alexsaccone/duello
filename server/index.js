@@ -579,7 +579,14 @@ io.on('connection', (socket) => {
 
     // Find and mark post as deleted
     const postIndex = posts.findIndex(p => p.id === historyEntry.postId);
+    let postAuthor = null;
     if (postIndex !== -1) {
+      const deletedPost = posts[postIndex];
+      // Find the post author and remove the post from their posts array
+      postAuthor = Array.from(users.values()).find(u => u.id === deletedPost.userId);
+      if (postAuthor) {
+        postAuthor.posts = postAuthor.posts.filter(postId => postId !== historyEntry.postId);
+      }
       posts.splice(postIndex, 1); // Remove from posts array
     }
 
@@ -602,6 +609,11 @@ io.on('connection', (socket) => {
       io.to(toUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
         h => h.fromUserId === toUser.id || h.toUserId === toUser.id
       ));
+    }
+
+    // Send updated authenticated data to post author if they're online
+    if (postAuthor && postAuthor.socketId) {
+      io.to(postAuthor.socketId).emit('authenticated', makeUserResponse(postAuthor));
     }
 
     console.log(`Post ${historyEntry.postId} destroyed by ${user.username}`);
@@ -665,6 +677,11 @@ io.on('connection', (socket) => {
       io.to(toUser.socketId).emit('duelHistory', Array.from(duelHistory.values()).filter(
         h => h.fromUserId === toUser.id || h.toUserId === toUser.id
       ));
+    }
+
+    // Send updated authenticated data to the hijacked user to refresh their profile
+    if (loserUser && loserUser.socketId) {
+      io.to(loserUser.socketId).emit('authenticated', makeUserResponse(loserUser));
     }
 
     console.log(`${user.username} posted on behalf of ${loserUser.username}: ${content}`);

@@ -20,6 +20,8 @@ const Duels: React.FC = () => {
   } = useSocket();
 
   const [activeDuelPopup, setActiveDuelPopup] = useState<string | null>(null);
+  const [postOnBehalfPopup, setPostOnBehalfPopup] = useState<{ historyId: string; targetUsername: string } | null>(null);
+  const [expandedVisualizations, setExpandedVisualizations] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     refreshDuelRequests();
@@ -335,14 +337,73 @@ const Duels: React.FC = () => {
                           {formatTimestamp(history.timestamp)}
                         </p>
                       </div>
-                      <div>
-                        <button
-                          onClick={() => handleForwardResult(history.id)}
-                          className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
-                        >
-                          <span>Forward</span>
-                          <span>→</span>
-                        </button>
+                      <div className="flex space-x-2">
+                        {(() => {
+                          const isChallenger = history.fromUserId === user.id;
+                          const challengerWon = history.winnerId === history.fromUserId;
+
+                          if (challengerWon) {
+                            // Challenger won - show forward and destroy buttons
+                            return (
+                              <>
+                                <button
+                                  onClick={() => handleForwardResult(history.id)}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-sm flex items-center space-x-1"
+                                >
+                                  <span>Forward</span>
+                                  <span>→</span>
+                                </button>
+                                {isChallenger && (
+                                  <button
+                                    onClick={() => history.postDestroyed ? null : handleDestroyPost(history.id)}
+                                    disabled={history.postDestroyed}
+                                    className={`px-3 py-1 rounded-md text-sm ${
+                                      history.postDestroyed
+                                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                        : 'bg-red-600 text-white hover:bg-red-700'
+                                    }`}
+                                  >
+                                    {history.postDestroyed ? 'Destroyed' : 'Destroy'}
+                                  </button>
+                                )}
+                              </>
+                            );
+                          } else {
+                            // Challenger lost - only winner gets "post for them" button
+                            const isWinner = history.winnerId === user.id;
+
+                            if (isWinner && !history.hijackPostUsed) {
+                              return (
+                                <button
+                                  onClick={() => handleOpenPostOnBehalf(history.id, isChallenger ? history.fromUsername : history.toUsername)}
+                                  className="bg-purple-600 text-white px-3 py-1 rounded-md hover:bg-purple-700 text-sm"
+                                >
+                                  Post for them
+                                </button>
+                              );
+                            } else if (isWinner && history.hijackPostUsed) {
+                              return (
+                                <span className="text-sm text-gray-500 italic">
+                                  Hijack used
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="text-sm text-gray-500 italic">
+                                  No actions available
+                                </span>
+                              );
+                            }
+                          }
+                        })()}
+                        {history.fromUserMove && history.toUserMove && history.pointSource && (
+                          <button
+                            onClick={() => handleToggleVisualization(history.id)}
+                            className="bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 text-sm"
+                          >
+                            {expandedVisualizations.has(history.id) ? 'Hide guesses' : 'Show guesses'}
+                          </button>
+                        )}
                       </div>
                     </div>
 
