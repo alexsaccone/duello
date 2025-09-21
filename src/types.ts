@@ -6,6 +6,7 @@ export interface User {
   wins: number;
   losses: number;
   followers: number;
+  elo: number;
   posts?: string[];
 }
 
@@ -16,6 +17,7 @@ export interface Post {
   profilePicture?: string; // URL or base64 string for profile picture
   content: string;
   timestamp: string;
+  authorElo: number;
   duelRequests?: string[];
 }
 
@@ -23,8 +25,10 @@ export interface DuelRequest {
   id: string;
   fromUserId: string;
   fromUsername: string;
+  fromUserElo: number;
   toUserId: string;
   toUsername: string;
+  toUserElo: number;
   postId: string;
   status: 'pending' | 'accepted' | 'declined';
   timestamp: string;
@@ -53,5 +57,6 @@ export interface UserProfile {
   wins: number;
   losses: number;
   followers: number;
+  elo: number;
   posts: Post[];
 }

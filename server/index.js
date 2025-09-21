@@ -32,27 +32,40 @@ const createUser = (username, socketId, password, profilePicture) => ({
   wins: 0,
   losses: 0,
   followers: 0,
+  elo: 1000, // Initialize ELO for new users
   posts: []
 });
 
+// ELO calculation constants
+const K_FACTOR = 32; // Max ELO adjustment per game
+
+// Helper function to calculate ELO change
+const calculateEloChange = (playerElo, opponentElo, outcome) => {
+  const expectedScore = 1 / (1 + Math.pow(10, (opponentElo - playerElo) / 400));
+  return Math.round(K_FACTOR * (outcome - expectedScore));
+};
+
 // Post object structure
-const createPost = (userId, username, content, profilePicture) => ({
+const createPost = (user, content) => ({
   id: uuidv4(),
-  userId,
-  username,
-  profilePicture, // Include profile picture in posts
+  userId: user.id,
+  username: user.username,
+  profilePicture: user.profilePicture, // Include profile picture in posts
   content,
   timestamp: new Date().toISOString(),
+  authorElo: user.elo,
   duelRequests: []
 });
 
 // Duel request object structure
-const createDuelRequest = (fromUserId, fromUsername, toUserId, toUsername, postId) => ({
+const createDuelRequest = (fromUserId, fromUsername, fromUserElo, toUserId, toUsername, toUserElo, postId) => ({
   id: uuidv4(),
   fromUserId,
   fromUsername,
+  fromUserElo,
   toUserId,
   toUsername,
+  toUserElo,
   postId,
   status: 'pending', // pending, accepted, declined
   timestamp: new Date().toISOString(),
@@ -94,7 +107,7 @@ io.on('connection', (socket) => {
     users.set(socket.id, user);
     
     // Don't send password back to client
-    const userResponse = { ...user };
+    const userResponse = { ...user, elo: user.elo };
     delete userResponse.password;
     
     socket.emit('authenticated', userResponse);
@@ -113,7 +126,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const post = createPost(user.id, user.username, content, user.profilePicture);
+    const post = createPost(user, content);
     posts.unshift(post); // Add to beginning of array
     user.posts.push(post.id);
 
@@ -151,8 +164,10 @@ io.on('connection', (socket) => {
     const duelRequest = createDuelRequest(
       requester.id,
       requester.username,
+      requester.elo,
       targetUserId,
       targetUser.username,
+      targetUser.elo,
       postId
     );
 
@@ -223,7 +238,7 @@ io.on('connection', (socket) => {
 
     const matchingUsers = Array.from(users.values())
       .filter(u => u.username.toLowerCase().includes(query.toLowerCase()) && u.id !== user.id)
-      .map(u => ({ id: u.id, username: u.username, profilePicture: u.profilePicture, wins: u.wins, losses: u.losses, followers: u.followers }));
+      .map(u => ({ id: u.id, username: u.username, profilePicture: u.profilePicture, wins: u.wins, losses: u.losses, followers: u.followers, elo: u.elo }));
 
     socket.emit('searchResults', matchingUsers);
   });
@@ -244,10 +259,21 @@ io.on('connection', (socket) => {
       wins: targetUser.wins,
       losses: targetUser.losses,
       followers: targetUser.followers,
+      elo: targetUser.elo,
       posts: userPosts
     };
 
+    // Emit to both generic and specific event for caching
     socket.emit('userProfile', profile);
+    socket.emit(`userProfile_${userId}`, {
+      id: targetUser.id,
+      username: targetUser.username,
+      profilePicture: targetUser.profilePicture,
+      wins: targetUser.wins,
+      losses: targetUser.losses,
+      followers: targetUser.followers,
+      elo: targetUser.elo,
+    });
   });
 
   // Get all posts
@@ -362,7 +388,7 @@ io.on('connection', (socket) => {
       ? `🏆 I just won a duel against @${opponentUsername}!`
       : `⚔️ I had an epic duel with @${opponentUsername} - they got me this time!`;
 
-    const post = createPost(user.id, user.username, resultText);
+    const post = createPost(user, resultText);
     posts.unshift(post);
     user.posts.push(post.id);
 
@@ -423,18 +449,57 @@ io.on('connection', (socket) => {
         duelRequest.toUserMove !== null && duelRequest.toUserMove !== undefined) {
       // Both players have moved, calculate winner
       let winnerId, winnerUsername;
+      let fromUserOutcome, toUserOutcome; // 1 for win, 0.5 for draw, 0 for loss
+
+      const fromUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
+      const toUser = Array.from(users.values()).find(u => u.id === duelRequest.toUserId);
+
+      if (!fromUser || !toUser) {
+        console.error('Error: Duel participants not found for ELO calculation');
+        socket.emit('error', 'Duel participants not found');
+        return;
+      }
+
+      // Store original ELO for potential change calculation
+      const oldFromUserElo = fromUser.elo;
+      const oldToUserElo = toUser.elo;
 
       if (duelRequest.fromUserMove > duelRequest.toUserMove) {
         winnerId = duelRequest.fromUserId;
         winnerUsername = duelRequest.fromUsername;
+        fromUserOutcome = 1;
+        toUserOutcome = 0;
       } else if (duelRequest.toUserMove > duelRequest.fromUserMove) {
         winnerId = duelRequest.toUserId;
         winnerUsername = duelRequest.toUsername;
+        fromUserOutcome = 0;
+        toUserOutcome = 1;
       } else {
-        // Tie - both win (for now)
+        // Tie
         winnerId = 'tie';
         winnerUsername = 'tie';
+        fromUserOutcome = 0.5;
+        toUserOutcome = 0.5;
       }
+
+      // Calculate ELO changes
+      const fromUserEloChange = calculateEloChange(fromUser.elo, toUser.elo, fromUserOutcome);
+      const toUserEloChange = calculateEloChange(toUser.elo, fromUser.elo, toUserOutcome);
+
+      // Update user stats and ELO
+      if (winnerId === 'tie') {
+        fromUser.wins++;
+        toUser.wins++;
+      } else if (winnerId === duelRequest.fromUserId) {
+        fromUser.wins++;
+        toUser.losses++;
+      } else {
+        toUser.wins++;
+        fromUser.losses++;
+      }
+
+      fromUser.elo += fromUserEloChange;
+      toUser.elo += toUserEloChange;
 
       // Find the original post
       const originalPost = posts.find(p => p.id === duelRequest.postId);
@@ -453,51 +518,33 @@ io.on('connection', (socket) => {
 
       duelHistory.set(historyEntry.id, historyEntry);
 
-      // Update user stats
-      if (winnerId === 'tie') {
-        // Both players get a win for ties
-        const fromUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
-        const toUser = Array.from(users.values()).find(u => u.id === duelRequest.toUserId);
-        if (fromUser) fromUser.wins++;
-        if (toUser) toUser.wins++;
-      } else if (winnerId === duelRequest.fromUserId) {
-        const winnerUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
-        const loserUser = Array.from(users.values()).find(u => u.id === duelRequest.toUserId);
-        if (winnerUser) winnerUser.wins++;
-        if (loserUser) loserUser.losses++;
-      } else {
-        const winnerUser = Array.from(users.values()).find(u => u.id === duelRequest.toUserId);
-        const loserUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
-        if (winnerUser) winnerUser.wins++;
-        if (loserUser) loserUser.losses++;
-      }
-
       // Mark duel as completed and remove from active requests
       duelRequest.gameState = 'completed';
       duelRequests.delete(requestId);
 
       // Notify both users
-      const fromUser = Array.from(users.values()).find(u => u.id === duelRequest.fromUserId);
-      const toUser = Array.from(users.values()).find(u => u.id === duelRequest.toUserId);
-
       if (fromUser && fromUser.socketId) {
         io.to(fromUser.socketId).emit('duelCompleted', historyEntry);
         io.to(fromUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === fromUser.id || req.toUserId === fromUser.id
         ));
-        // Send updated user stats
-        io.to(fromUser.socketId).emit('authenticated', fromUser);
+        // Send updated user stats including ELO
+        const fromUserResponse = { ...fromUser };
+        delete fromUserResponse.password;
+        io.to(fromUser.socketId).emit('authenticated', fromUserResponse);
       }
       if (toUser && toUser.socketId) {
         io.to(toUser.socketId).emit('duelCompleted', historyEntry);
         io.to(toUser.socketId).emit('duelRequests', Array.from(duelRequests.values()).filter(
           req => req.fromUserId === toUser.id || req.toUserId === toUser.id
         ));
-        // Send updated user stats
-        io.to(toUser.socketId).emit('authenticated', toUser);
+        // Send updated user stats including ELO
+        const toUserResponse = { ...toUser };
+        delete toUserResponse.password;
+        io.to(toUser.socketId).emit('authenticated', toUserResponse);
       }
 
-      console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove})`);
+      console.log(`Duel completed: ${winnerUsername} won (${duelRequest.fromUserMove} vs ${duelRequest.toUserMove}). ELO changes: ${fromUser.username} (${fromUserEloChange}), ${toUser.username} (${toUserEloChange})`);
     } else {
       // Only one player has moved, notify both players of the update
       const otherUserId = isFromUser ? duelRequest.toUserId : duelRequest.fromUserId;
